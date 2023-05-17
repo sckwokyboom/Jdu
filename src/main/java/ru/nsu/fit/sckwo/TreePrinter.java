@@ -1,5 +1,6 @@
 package ru.nsu.fit.sckwo;
 
+import com.sun.source.tree.BinaryTree;
 import ru.nsu.fit.sckwo.comparators.DuFileLexicographicalComparator;
 import ru.nsu.fit.sckwo.comparators.DuFileSizeComparator;
 import ru.nsu.fit.sckwo.exception.JduInvalidArgumentsException;
@@ -9,9 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -86,11 +85,10 @@ public class TreePrinter {
             case DIRECTORY -> {
                 try (Stream<Path> childrenFilesStream = Files.list(curFile.getPath())) {
                     List<Path> childrenFilesPaths = childrenFilesStream.toList();
-                    ArrayList<DuFile> children = new ArrayList<>();
+                    TreeSet<DuFile> children = new TreeSet<>(comparator);
                     for (Path childFilePath : childrenFilesPaths) {
                         children.add(new DuFile(childFilePath));
                     }
-                    children.sort(comparator);
                     int countOfFiles = min(children.size(), options.limit());
                     countsOfChildren.add(curDepth, countOfFiles);
                     children
@@ -98,18 +96,20 @@ public class TreePrinter {
                             .skip(options.limit())
                             .forEach(child -> fileSizeCacheCalculator.removeCacheEntry(child.getPath()));
 
-                    children
-                            .stream()
-                            .limit(options.limit())
-                            .forEach(child -> {
-                                countsOfChildren.set(curDepth, countsOfChildren.get(curDepth) - 1);
-                                updateCurrentCompoundIndent(curDepth + 1);
-                                try {
-                                    print(child, curDepth + 1);
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-                            });
+                    Iterator<DuFile> iterator = children.iterator();
+                    int countOfProcessedChildren = 0;
+                    while (iterator.hasNext() && countOfProcessedChildren != options.limit()) {
+                        DuFile child = iterator.next();
+                        countsOfChildren.set(curDepth, countsOfChildren.get(curDepth) - 1);
+                        updateCurrentCompoundIndent(curDepth + 1);
+                        iterator.remove();
+                        try {
+                            print(child, curDepth + 1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        countOfProcessedChildren++;
+                    }
                 } catch (IOException e) {
                     LOGGER.log(Level.SEVERE, "Unable to get the list of children: {0}", e.getMessage());
                 }
