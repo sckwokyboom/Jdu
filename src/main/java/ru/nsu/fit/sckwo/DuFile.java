@@ -8,16 +8,18 @@ import java.util.function.ToLongFunction;
 public class DuFile {
     private final Path absolutePath;
     private long size = -1;
+    private final DuFileType fileType;
 
     public DuFile(Path absolutePath) {
         this.absolutePath = absolutePath;
+        fileType = recognizeFileType();
     }
 
     public long getSize(ToLongFunction<Path> sizeOf) {
         if (size == -1
-                && getType() != DuFileType.UNKNOWN_FORMAT_FILE
-                && getType() != DuFileType.DANGLING_SYMLINK
-                && getType() != DuFileType.BROKEN_SYMLINK) {
+                && fileType != DuFileType.UNKNOWN_FORMAT_FILE
+                && fileType != DuFileType.DANGLING_SYMLINK
+                && fileType != DuFileType.BROKEN_SYMLINK) {
             size = sizeOf.applyAsLong(absolutePath);
 //            size = FileUtils.sizeOf(absolutePath.toFile());
         }
@@ -29,8 +31,12 @@ public class DuFile {
     }
 
     public DuFileType getType() {
+        return fileType;
+    }
+
+    private DuFileType recognizeFileType() {
         if (Files.isSymbolicLink(absolutePath)) {
-            return checkSymlink();
+            return recognizeTypeOfSymlink();
         } else if (Files.isDirectory(absolutePath)) {
             return DuFileType.DIRECTORY;
         } else if (Files.isRegularFile(absolutePath)) {
@@ -40,12 +46,11 @@ public class DuFile {
         }
     }
 
-    private DuFileType checkSymlink() {
+    private DuFileType recognizeTypeOfSymlink() {
         try {
             if (absolutePath.toFile().getCanonicalFile().exists()) {
                 return DuFileType.SYMLINK;
             } else {
-//                System.out.println(absolutePath + " " + absolutePath.toFile().exists());
                 return DuFileType.DANGLING_SYMLINK;
             }
         } catch (IOException e) {

@@ -14,26 +14,44 @@ import java.util.concurrent.TimeUnit;
 
 public class FileSizeCacheCalculator {
     private final LoadingCache<Path, Long> cache;
+    private final int depthLimit;
+    private int startDepth;
 
-    public FileSizeCacheCalculator() {
+    public FileSizeCacheCalculator(int depthLimit) {
+        this.depthLimit = depthLimit;
         cache = CacheBuilder.newBuilder()
                 .maximumSize(1_000_000_000L)
                 .expireAfterWrite(100, TimeUnit.MINUTES)
                 .build(new CacheLoader<>() {
                     @Override
-                    public Long load(@NotNull Path file) {
-                        return sizeOf(file.toFile());
+                    public Long load(@NotNull Path absolutePath) {
+//                        System.out.println(absolutePath);
+                        return sizeOf(absolutePath.toFile());
                     }
                 });
     }
 
-    public long calculateSize(Path filePath) {
+    public void removeCacheEntry(Path absoluteFilePathToRemove) {
+        cache.invalidate(absoluteFilePathToRemove);
+    }
+
+    @NotNull
+    public Long calculateSize(Path absoluteFilePath) {
         try {
-            return cache.get(filePath);
+//            System.out.println(absoluteFilePath);
+            return cache.get(absoluteFilePath);
         } catch (ExecutionException e) {
             e.printStackTrace();
-            return -1;
+            return (long) -1;
         }
+    }
+
+    public Long cacheEntriesSize() {
+        return cache.size();
+    }
+
+    public void setStartDepth(int startDepth) {
+        this.startDepth = startDepth;
     }
 
     private static void requireExists(File file) {
@@ -54,26 +72,30 @@ public class FileSizeCacheCalculator {
     private long sizeOf(File file) {
 //        requireExists(file, "file");
         Objects.requireNonNull(file, "file");
-        return file.isDirectory() ? sizeOfDirectory0(file) : file.length();
+        return file.isDirectory() ? sizeOfDirectory(file) : file.length();
     }
 
 
-    private long sizeOfDirectory0(File directory) {
+    private long sizeOfDirectory(File directory) {
         Objects.requireNonNull(directory, "directory");
         File[] files = directory.listFiles();
+        startDepth++;
         if (files == null) {
+            startDepth--;
             return 0L;
         } else {
             long size = 0L;
-
             for (File file : files) {
                 if (!FileUtils.isSymlink(file)) {
                     long sizeOfFile = 0;
                     try {
-                        sizeOfFile = cache.get(file.toPath());
-//                        if (cache.size() % 100_000 == 0) {
-//                            System.out.println(cache.size());
-//                        }
+                        if (startDepth <= depthLimit) {
+                            sizeOfFile = cache.get(file.toPath().toAbsolutePath());
+//                            System.out.println(file.toPath());
+                        } else {
+//                            System.out.println(startDepth);
+                            sizeOfFile = sizeOf(file);
+                        }
                     } catch (ExecutionException e) {
                         e.printStackTrace();
                     }
@@ -83,30 +105,8 @@ public class FileSizeCacheCalculator {
                     }
                 }
             }
-
+            startDepth--;
             return size;
         }
     }
-
-//    public BigInteger sizeOfDirectoryAsBigInteger(File directory) {
-//        return sizeOfDirectoryBig0(requireDirectoryExists(directory, "directory"));
-//    }
-//
-//    private BigInteger sizeOfDirectoryBig0(File directory) {
-//        Objects.requireNonNull(directory, "directory");
-//        File[] files = directory.listFiles();
-//        if (files == null) {
-//            return BigInteger.ZERO;
-//        } else {
-//            BigInteger size = BigInteger.ZERO;
-//
-//            for (File file : files) {
-//                if (!FileUtils.isSymlink(file)) {
-//                    size = size.add(sizeOfBig0(file));
-//                }
-//            }
-//
-//            return size;
-//        }
-//    }
 }

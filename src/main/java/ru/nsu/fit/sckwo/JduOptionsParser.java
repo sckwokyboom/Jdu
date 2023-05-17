@@ -40,7 +40,7 @@ public class JduOptionsParser {
             }
 
             System.out.println(filePath);
-            // CR: support regular files and symlinks as root
+            // CR: support regular files and symlinks as rootAbsolutePath
             Path absolutePath = Path.of(filePath);
             if (!Files.exists(absolutePath)) {
                 throw error(absolutePath + " does not exist.");

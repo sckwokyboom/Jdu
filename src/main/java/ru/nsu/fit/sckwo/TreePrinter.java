@@ -37,7 +37,7 @@ public class TreePrinter {
     public TreePrinter(JduOptions options) {
         this.options = options;
         countsOfChildren = new ArrayList<>(options.depth());
-        fileSizeCacheCalculator = new FileSizeCacheCalculator();
+        fileSizeCacheCalculator = new FileSizeCacheCalculator(options.depth());
         visited = new ArrayList<>();
         switch (options.comparatorType()) {
             case SIZE_COMPARATOR ->
@@ -54,11 +54,8 @@ public class TreePrinter {
         }
     }
 
-    public void print(Path absolutePath, int curDepth) throws IOException {
-        if (curDepth > options.depth() && curDepth < MAX_VALUE) {
-            return;
-        }
-        DuFile curFile = new DuFile(absolutePath);
+    public void print(DuFile curFile, int curDepth) throws IOException {
+        fileSizeCacheCalculator.setStartDepth(curDepth);
         System.out.println(
                 currentCompoundIndent
                         + curFile.getPath().getFileName()
@@ -67,7 +64,10 @@ public class TreePrinter {
                         + "["
                         + curFile.getType().getName()
                         + "]");
-
+        fileSizeCacheCalculator.removeCacheEntry(curFile.getPath());
+        if (curDepth > 0 && curDepth < MAX_VALUE && curDepth >= options.depth()) {
+            return;
+        }
         switch (curFile.getType()) {
             case SYMLINK -> {
                 if (options.followSymlinks()) {
@@ -79,29 +79,33 @@ public class TreePrinter {
                     countsOfChildren.add(curDepth, 0);
                     updateCurrentCompoundIndent(curDepth + 1);
                     currentCompoundIndent = currentCompoundIndent.replace("─ ", "▷ ");
-                    print(targetOfSymLink.getPath(), curDepth + 1);
+                    print(targetOfSymLink, curDepth + 1);
                     visited.clear();
                 }
             }
             case DIRECTORY -> {
                 try (Stream<Path> childrenFilesStream = Files.list(curFile.getPath())) {
                     List<Path> childrenFilesPaths = childrenFilesStream.toList();
-                    List<DuFile> children = new ArrayList<>();
+                    ArrayList<DuFile> children = new ArrayList<>();
                     for (Path childFilePath : childrenFilesPaths) {
                         children.add(new DuFile(childFilePath));
                     }
-                    ArrayList<DuFile> arrayToPrint = new ArrayList<>(children);
-                    arrayToPrint.sort(comparator);
-                    int countOfFiles = min(arrayToPrint.size(), options.limit());
+                    children.sort(comparator);
+                    int countOfFiles = min(children.size(), options.limit());
                     countsOfChildren.add(curDepth, countOfFiles);
-                    arrayToPrint
+                    children
+                            .stream()
+                            .skip(options.limit())
+                            .forEach(child -> fileSizeCacheCalculator.removeCacheEntry(child.getPath()));
+
+                    children
                             .stream()
                             .limit(options.limit())
                             .forEach(child -> {
                                 countsOfChildren.set(curDepth, countsOfChildren.get(curDepth) - 1);
                                 updateCurrentCompoundIndent(curDepth + 1);
                                 try {
-                                    print(child.getPath(), curDepth + 1);
+                                    print(child, curDepth + 1);
                                 } catch (IOException e) {
                                     e.printStackTrace();
                                 }
@@ -112,7 +116,8 @@ public class TreePrinter {
             }
             case REGULAR_FILE, UNKNOWN_FORMAT_FILE -> countsOfChildren.add(curDepth, 0);
         }
-
+//        if (fileSizeCacheCalculator.cacheEntriesSize() < 300)
+//            System.out.println(fileSizeCacheCalculator.cacheEntriesSize());
     }
 
     private void updateCurrentCompoundIndent(int currentDepth) {
@@ -121,7 +126,6 @@ public class TreePrinter {
             if (i == currentDepth - 1) {
                 if (countsOfChildren.get(i) == 0) {
                     builder.append("╰" + INDENT_HORIZONTAL_BAR + " ");
-                    // └╰╼┈→➝➞➛⟶⇾
                 } else {
                     builder.append("├" + INDENT_HORIZONTAL_BAR + " ");
                 }
@@ -138,7 +142,6 @@ public class TreePrinter {
     }
 
     private static String humanReadableByteCountBin(long bytes) {
-        // CR: assert abs
         assert bytes > 0;
         assert bytes < Long.MAX_VALUE;
         long absBytesValue = Math.abs(bytes);

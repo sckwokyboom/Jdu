@@ -8,7 +8,7 @@ import java.nio.file.Path;
 public record JduOptions(boolean followSymlinks,
                          int depth, int limit,
                          @NotNull ComparatorType comparatorType,
-                         @NotNull Path root) {
+                         @NotNull Path rootAbsolutePath) {
 
     @Override
     public boolean followSymlinks() {
@@ -30,8 +30,7 @@ public record JduOptions(boolean followSymlinks,
         return comparatorType;
     }
 
-    @Override
-    public Path root() {
-        return root;
+    public Path rootAbsolutePath() {
+        return rootAbsolutePath;
     }
 }

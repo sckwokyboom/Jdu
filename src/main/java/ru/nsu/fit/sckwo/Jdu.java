@@ -15,7 +15,7 @@ public class Jdu {
     public void printFileTree() throws IOException {
         TreePrinter treePrinter = new TreePrinter(options);
         try {
-            treePrinter.print(options.root(), 0);
+            treePrinter.print(new DuFile(options.rootAbsolutePath()), 0);
         } catch (RuntimeException e) {
             throw new JduRuntimeException(e);
         }
