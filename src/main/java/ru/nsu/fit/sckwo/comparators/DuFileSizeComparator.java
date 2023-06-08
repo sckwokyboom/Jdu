@@ -1,7 +1,7 @@
 package ru.nsu.fit.sckwo.comparators;
 
 
-import ru.nsu.fit.sckwo.DuFile;
+import ru.nsu.fit.sckwo.dufile.DuFile;
 
 import java.nio.file.Path;
 import java.util.Comparator;

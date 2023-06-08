@@ -1,6 +1,6 @@
 package ru.nsu.fit.sckwo.comparators;
 
-import ru.nsu.fit.sckwo.DuFile;
+import ru.nsu.fit.sckwo.dufile.DuFile;
 
 import java.util.Comparator;
 
