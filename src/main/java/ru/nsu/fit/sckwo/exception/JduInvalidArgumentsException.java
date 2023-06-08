@@ -10,4 +10,8 @@ public class JduInvalidArgumentsException extends JduException {
     public JduInvalidArgumentsException(@NotNull Throwable t) {
         super(t);
     }
+
+    public JduInvalidArgumentsException(@NotNull String message, @NotNull Throwable cause) {
+        super(message, cause);
+    }
 }

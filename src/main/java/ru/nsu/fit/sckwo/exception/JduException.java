@@ -10,4 +10,8 @@ public abstract class JduException extends RuntimeException {
     public JduException(@NotNull Throwable t) {
         super(t);
     }
+
+    public JduException(@NotNull String message, @NotNull Throwable cause) {
+        super("jdu: " + message, cause);
+    }
 }
