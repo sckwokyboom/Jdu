@@ -1,4 +1,4 @@
-package ru.nsu.fit.sckwo;
+package ru.nsu.fit.sckwo.dufile;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,7 +21,6 @@ public class DuFile {
                 && fileType != DuFileType.DANGLING_SYMLINK
                 && fileType != DuFileType.BROKEN_SYMLINK) {
             size = sizeOf.applyAsLong(absolutePath);
-//            size = FileUtils.sizeOf(absolutePath.toFile());
         }
         return size;
     }
@@ -48,13 +47,15 @@ public class DuFile {
 
     private DuFileType recognizeTypeOfSymlink() {
         try {
-            if (absolutePath.toFile().getCanonicalFile().exists()) {
+            if (Files.exists(Files.readSymbolicLink(absolutePath))) {
                 return DuFileType.SYMLINK;
             } else {
                 return DuFileType.DANGLING_SYMLINK;
             }
         } catch (IOException e) {
-            return DuFileType.UNKNOWN_FORMAT_FILE;
+            //TODO: throw what?
+            return DuFileType.BROKEN_SYMLINK;
         }
+
     }
 }

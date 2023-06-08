@@ -1,4 +1,4 @@
-package ru.nsu.fit.sckwo;
+package ru.nsu.fit.sckwo.dufile;
 
 public enum DuFileType {
     REGULAR_FILE {
