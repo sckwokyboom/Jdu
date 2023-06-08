@@ -3,14 +3,16 @@ package ru.nsu.fit.sckwo;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 public class FileSizeCacheCalculator {
     private final LoadingCache<Path, Long> cache;
@@ -25,8 +27,7 @@ public class FileSizeCacheCalculator {
                 .build(new CacheLoader<>() {
                     @Override
                     public Long load(@NotNull Path absolutePath) {
-//                        System.out.println(absolutePath);
-                        return sizeOf(absolutePath.toFile());
+                        return sizeOf(absolutePath);
                     }
                 });
     }
@@ -38,11 +39,9 @@ public class FileSizeCacheCalculator {
     @NotNull
     public Long calculateSize(Path absoluteFilePath) {
         try {
-//            System.out.println(absoluteFilePath);
             return cache.get(absoluteFilePath);
         } catch (ExecutionException e) {
-            e.printStackTrace();
-            return (long) -1;
+            return (long) 0;
         }
     }
 
@@ -69,44 +68,49 @@ public class FileSizeCacheCalculator {
     }
 
 
-    private long sizeOf(File file) {
-//        requireExists(file, "file");
-        Objects.requireNonNull(file, "file");
-        return file.isDirectory() ? sizeOfDirectory(file) : file.length();
+    private long sizeOf(Path filePath) {
+        Objects.requireNonNull(filePath, "path");
+        if (Files.isDirectory(filePath)) {
+            return sizeOfDirectory(filePath);
+        } else {
+            try {
+                return Files.size(filePath);
+            } catch (IOException ignored) {
+            }
+        }
+        return 0;
     }
 
 
-    private long sizeOfDirectory(File directory) {
+    private long sizeOfDirectory(Path directory) {
         Objects.requireNonNull(directory, "directory");
-        File[] files = directory.listFiles();
-        startDepth++;
-        if (files == null) {
-            startDepth--;
-            return 0L;
-        } else {
-            long size = 0L;
-            for (File file : files) {
-                if (!FileUtils.isSymlink(file)) {
+        try (Stream<Path> children = Files.list(directory)) {
+            startDepth++;
+            if (children == null) {
+                startDepth--;
+                return 0L;
+            } else {
+                long size = children.mapToLong(file -> {
                     long sizeOfFile = 0;
-                    try {
-                        if (startDepth <= depthLimit) {
-                            sizeOfFile = cache.get(file.toPath().toAbsolutePath());
-//                            System.out.println(file.toPath());
-                        } else {
-//                            System.out.println(startDepth);
-                            sizeOfFile = sizeOf(file);
+                    if (!Files.isSymbolicLink(file)) {
+                        try {
+                            if (startDepth <= depthLimit) {
+                                sizeOfFile = cache.get(file.toAbsolutePath());
+                            } else {
+                                sizeOfFile = sizeOf(file);
+                            }
+                        } catch (ExecutionException e) {
+                            e.printStackTrace();
                         }
-                    } catch (ExecutionException e) {
-                        e.printStackTrace();
                     }
-                    size += sizeOfFile;
-                    if (size < 0L) {
-                        break;
-                    }
-                }
+                    return sizeOfFile;
+                }).sum();
+                startDepth--;
+                return size;
             }
-            startDepth--;
-            return size;
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
         }
+        return 0;
     }
 }

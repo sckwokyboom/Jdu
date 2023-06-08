@@ -1,16 +1,20 @@
 package ru.nsu.fit.sckwo;
 
-import com.sun.source.tree.BinaryTree;
+import org.jetbrains.annotations.NotNull;
 import ru.nsu.fit.sckwo.comparators.DuFileLexicographicalComparator;
 import ru.nsu.fit.sckwo.comparators.DuFileSizeComparator;
+import ru.nsu.fit.sckwo.dufile.DuFile;
+import ru.nsu.fit.sckwo.dufile.DuFileType;
 import ru.nsu.fit.sckwo.exception.JduInvalidArgumentsException;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.CharacterIterator;
-import java.text.StringCharacterIterator;
-import java.util.*;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -22,6 +26,7 @@ import static java.lang.Integer.min;
 
 public class TreePrinter {
     private final JduOptions options;
+    private final PrintStream printStream;
     private final Comparator<DuFile> comparator;
     private final FileSizeCacheCalculator fileSizeCacheCalculator;
     private String currentCompoundIndent = "";
@@ -33,10 +38,15 @@ public class TreePrinter {
     private static final String INDENT_HORIZONTAL_BAR = "─";
     private static final String INDENT_TAB = "   ";
 
-    public TreePrinter(JduOptions options) {
+    public TreePrinter(JduOptions options, @NotNull PrintStream printStream) throws JduInvalidArgumentsException {
         this.options = options;
-        countsOfChildren = new ArrayList<>(options.depth());
-        fileSizeCacheCalculator = new FileSizeCacheCalculator(options.depth());
+        this.printStream = printStream;
+        try {
+            countsOfChildren = new ArrayList<>(options.depth());
+            fileSizeCacheCalculator = new FileSizeCacheCalculator(options.depth());
+        } catch (OutOfMemoryError outOfMemoryError) {
+            throw new JduInvalidArgumentsException("The value of the depth parameter is too large.", outOfMemoryError);
+        }
         visited = new ArrayList<>();
         switch (options.comparatorType()) {
             case SIZE_COMPARATOR ->
@@ -48,14 +58,13 @@ public class TreePrinter {
             Handler fileHandler = new FileHandler("log.txt");
             LOGGER.addHandler(fileHandler);
             LOGGER.setUseParentHandlers(false);
-        } catch (IOException e) {
-            System.err.println("Unable to create file for error logging.");
+        } catch (IOException ignored) {
         }
     }
 
     public void print(DuFile curFile, int curDepth) throws IOException {
         fileSizeCacheCalculator.setStartDepth(curDepth);
-        System.out.println(
+        printStream.println(
                 currentCompoundIndent
                         + curFile.getPath().getFileName()
                         + " "
@@ -85,39 +94,36 @@ public class TreePrinter {
             case DIRECTORY -> {
                 try (Stream<Path> childrenFilesStream = Files.list(curFile.getPath())) {
                     List<Path> childrenFilesPaths = childrenFilesStream.toList();
-                    TreeSet<DuFile> children = new TreeSet<>(comparator);
+                    ArrayList<DuFile> children = new ArrayList<>();
                     for (Path childFilePath : childrenFilesPaths) {
                         children.add(new DuFile(childFilePath));
                     }
+                    children.sort(comparator);
                     int countOfFiles = min(children.size(), options.limit());
                     countsOfChildren.add(curDepth, countOfFiles);
                     children
                             .stream()
                             .skip(options.limit())
                             .forEach(child -> fileSizeCacheCalculator.removeCacheEntry(child.getPath()));
+                    children
+                            .stream()
+                            .limit(countOfFiles)
+                            .forEach(child -> {
+                                countsOfChildren.set(curDepth, countsOfChildren.get(curDepth) - 1);
+                                updateCurrentCompoundIndent(curDepth + 1);
+                                try {
+                                    print(child, curDepth + 1);
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            });
 
-                    Iterator<DuFile> iterator = children.iterator();
-                    int countOfProcessedChildren = 0;
-                    while (iterator.hasNext() && countOfProcessedChildren != options.limit()) {
-                        DuFile child = iterator.next();
-                        countsOfChildren.set(curDepth, countsOfChildren.get(curDepth) - 1);
-                        updateCurrentCompoundIndent(curDepth + 1);
-                        iterator.remove();
-                        try {
-                            print(child, curDepth + 1);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        countOfProcessedChildren++;
-                    }
                 } catch (IOException e) {
-                    LOGGER.log(Level.SEVERE, "Unable to get the list of children: {0}", e.getMessage());
+                    LOGGER.log(Level.SEVERE, "Unable to get access to the file: {0}", e.getMessage());
                 }
             }
             case REGULAR_FILE, UNKNOWN_FORMAT_FILE -> countsOfChildren.add(curDepth, 0);
         }
-//        if (fileSizeCacheCalculator.cacheEntriesSize() < 300)
-//            System.out.println(fileSizeCacheCalculator.cacheEntriesSize());
     }
 
     private void updateCurrentCompoundIndent(int currentDepth) {
@@ -141,23 +147,18 @@ public class TreePrinter {
         currentCompoundIndent = String.valueOf(builder);
     }
 
-    private static String humanReadableByteCountBin(long bytes) {
-        assert bytes > 0;
-        assert bytes < Long.MAX_VALUE;
-        long absBytesValue = Math.abs(bytes);
-        if (absBytesValue < 1024) {
-            return bytes + " B";
+    private static String humanReadableByteCountBin(long fileSizeInBytes) {
+        assert fileSizeInBytes >= 0;
+        assert fileSizeInBytes < Long.MAX_VALUE;
+        if (fileSizeInBytes < 1024) {
+            return fileSizeInBytes + " " + FileSizeUnit.BYTE.getName();
         }
-        long value = absBytesValue;
-        // CR: enum with sizes
-        CharacterIterator prefixesOfSystemOfUnits = new StringCharacterIterator("KMGTPE");
-        long numOfBytesNearTheExbibyte = 0xfffffffffffffffL;
-        for (int i = 40; i >= 0 && absBytesValue > numOfBytesNearTheExbibyte >> i; i -= 10) {
-            value >>= 10;
-            prefixesOfSystemOfUnits.next();
-        }
-        value *= Long.signum(bytes);
-        return String.format("%.1f %ciB", value / 1024.0, prefixesOfSystemOfUnits.current()).replace(',', '.');
+        final FileSizeUnit[] UNITS = FileSizeUnit.values();
+        int digitGroups = (int) (Math.log(fileSizeInBytes) / Math.log(1024));
+        double convertedSize = fileSizeInBytes / Math.pow(1024, digitGroups);
+        FileSizeUnit currentUnit = UNITS[digitGroups];
+        DecimalFormat decimalFormat = new DecimalFormat("#,##0.##");
+        return decimalFormat.format(convertedSize) + " " + currentUnit.getName();
     }
 
     private String formattedHumanReadableByteSize(DuFile file) {

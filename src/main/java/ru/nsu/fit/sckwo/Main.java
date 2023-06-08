@@ -9,13 +9,10 @@ public class Main {
         try {
             JduOptionsParser jduOptionsParser = new JduOptionsParser();
             JduOptions jduOptions = jduOptionsParser.parseOptions(args);
-            Jdu jdu = new Jdu(jduOptions);
+            Jdu jdu = new Jdu(jduOptions, System.out);
             jdu.printFileTree();
-
-        } catch (JduException e) {
+        } catch (JduException | IOException e) {
             System.err.println(e.getMessage());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
 
     }

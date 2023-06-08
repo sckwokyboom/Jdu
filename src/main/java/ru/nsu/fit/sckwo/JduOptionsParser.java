@@ -4,7 +4,6 @@ import org.apache.commons.cli.*;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import ru.nsu.fit.sckwo.comparators.ComparatorType;
-import ru.nsu.fit.sckwo.exception.JduException;
 import ru.nsu.fit.sckwo.exception.JduInvalidArgumentsException;
 
 import java.nio.file.Files;
@@ -14,8 +13,8 @@ import static java.lang.Integer.parseInt;
 
 public class JduOptionsParser {
     final static Options options;
-    static final int DEFAULT_DEPTH = 128;
-    static final int DEFAULT_LIMIT = 128;
+    static final int DEFAULT_DEPTH = 8;
+    static final int DEFAULT_LIMIT = 32;
 
     static {
         options = new Options();
@@ -38,32 +37,38 @@ public class JduOptionsParser {
             if (cmd.getArgList().size() == 0) {
                 filePath = System.getProperty("user.dir");
             }
-
-            System.out.println(filePath);
-            // CR: support regular files and symlinks as rootAbsolutePath
-            Path absolutePath = Path.of(filePath);
+            Path absolutePath = Path.of(filePath).toAbsolutePath();
             if (!Files.exists(absolutePath)) {
                 throw error(absolutePath + " does not exist.");
             }
-            if (!Files.isDirectory(absolutePath)) {
-                throw error(absolutePath + " is not a directory.");
+            if (!Files.isDirectory(absolutePath) && !Files.isRegularFile(absolutePath) && !Files.isSymbolicLink(absolutePath)) {
+                throw error(absolutePath + " is not a file or a directory.");
             }
             int depth = DEFAULT_DEPTH, limit = DEFAULT_LIMIT;
             if (cmd.hasOption("depth")) {
-                depth = parseInt(cmd.getOptionValue("depth"));
+                try {
+                    depth = parseInt(cmd.getOptionValue("depth"));
+                } catch (NumberFormatException e) {
+                    throw error("\"" + cmd.getOptionValue("depth") + "\"" + " is not a number in option: depth");
+                }
+
                 if (depth < 0) {
-                    throw error("The specified parameter cannot be a negative number: depth");
+                    throw error("\"" + depth + "\"" + " is not a positive number in option: depth");
                 }
             }
             if (cmd.hasOption("limit")) {
-                limit = parseInt(cmd.getOptionValue("limit"));
+                try {
+                    limit = parseInt(cmd.getOptionValue("limit"));
+                } catch (NumberFormatException e) {
+                    throw error("\"" + cmd.getOptionValue("limit") + "\"" + " is not a number in option: limit");
+                }
                 if (limit < 0) {
-                    throw error("The specified parameter cannot be a negative number: limit");
+                    throw error("\"" + limit + "\"" + " is not a positive number in option: limit");
                 }
             }
             return new JduOptions(cmd.hasOption("L"), depth, limit, ComparatorType.SIZE_COMPARATOR, absolutePath);
-        } catch (ParseException | JduException e) {
-            throw new JduInvalidArgumentsException(e);
+        } catch (ParseException e) {
+            throw new JduInvalidArgumentsException(e.getMessage(), e);
         }
     }
 
