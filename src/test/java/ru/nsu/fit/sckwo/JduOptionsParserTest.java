@@ -76,7 +76,7 @@ public class JduOptionsParserTest extends DuTest {
                 JduInvalidArgumentsException.class,
                 () -> jduOptionsParser.parseOptions(args));
 
-        String expectedMessage = "jdu: \"gsfg\" is not a number in option: depth";
+        String expectedMessage = "jdu: \"gsfg\" is not a correct number in option: depth";
         String actualMessage = thrown.getMessage();
 
         Assert.assertEquals(expectedMessage, actualMessage);
@@ -122,7 +122,7 @@ public class JduOptionsParserTest extends DuTest {
                 JduInvalidArgumentsException.class,
                 () -> jduOptionsParser.parseOptions(args));
 
-        String expectedMessage = "jdu: \"gdfsg\" is not a number in option: limit";
+        String expectedMessage = "jdu: \"gdfsg\" is not a correct number in option: limit";
         String actualMessage = thrown.getMessage();
 
         Assert.assertEquals(expectedMessage, actualMessage);

@@ -53,7 +53,6 @@ public class DuFile {
                 return DuFileType.DANGLING_SYMLINK;
             }
         } catch (IOException e) {
-            //TODO: throw what?
             return DuFileType.BROKEN_SYMLINK;
         }
 

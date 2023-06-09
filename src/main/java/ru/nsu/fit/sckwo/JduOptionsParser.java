@@ -49,7 +49,7 @@ public class JduOptionsParser {
                 try {
                     depth = parseInt(cmd.getOptionValue("depth"));
                 } catch (NumberFormatException e) {
-                    throw error("\"" + cmd.getOptionValue("depth") + "\"" + " is not a number in option: depth");
+                    throw error("\"" + cmd.getOptionValue("depth") + "\"" + " is not a correct number in option: depth");
                 }
 
                 if (depth < 0) {
@@ -60,7 +60,7 @@ public class JduOptionsParser {
                 try {
                     limit = parseInt(cmd.getOptionValue("limit"));
                 } catch (NumberFormatException e) {
-                    throw error("\"" + cmd.getOptionValue("limit") + "\"" + " is not a number in option: limit");
+                    throw error("\"" + cmd.getOptionValue("limit") + "\"" + " is not a correct number in option: limit");
                 }
                 if (limit < 0) {
                     throw error("\"" + limit + "\"" + " is not a positive number in option: limit");
