@@ -28,7 +28,7 @@ public class JduOptionsParser {
             CommandLineParser parser = new DefaultParser();
             CommandLine cmd = parser.parse(options, args);
             if (cmd.getArgList().size() > 1) {
-                throw error("Missing arguments.");
+                throw error("Too many path arguments.");
             }
             String filePath = "";
             if (cmd.getArgList().size() == 1) {
@@ -44,7 +44,7 @@ public class JduOptionsParser {
             if (!Files.isDirectory(absolutePath) && !Files.isRegularFile(absolutePath) && !Files.isSymbolicLink(absolutePath)) {
                 throw error(absolutePath + " is not a file or a directory.");
             }
-            int depth = DEFAULT_DEPTH, limit = DEFAULT_LIMIT;
+            int depth = DEFAULT_DEPTH;
             if (cmd.hasOption("depth")) {
                 try {
                     depth = parseInt(cmd.getOptionValue("depth"));
@@ -56,6 +56,8 @@ public class JduOptionsParser {
                     throw error("\"" + depth + "\"" + " is not a positive number in option: depth");
                 }
             }
+            int limit = DEFAULT_LIMIT;
+            // CR: copy paste
             if (cmd.hasOption("limit")) {
                 try {
                     limit = parseInt(cmd.getOptionValue("limit"));

@@ -15,6 +15,7 @@ public class DuFile {
         fileType = recognizeFileType();
     }
 
+    // CR: just set size
     public long getSize(ToLongFunction<Path> sizeOf) {
         if (size == -1
                 && fileType != DuFileType.UNKNOWN_FORMAT_FILE

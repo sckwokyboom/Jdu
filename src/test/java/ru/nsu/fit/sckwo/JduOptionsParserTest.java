@@ -5,6 +5,7 @@ import org.junit.Test;
 import ru.nsu.fit.sckwo.exception.JduInvalidArgumentsException;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class JduOptionsParserTest extends DuTest {
@@ -143,10 +144,13 @@ public class JduOptionsParserTest extends DuTest {
         Assert.assertEquals(expectedMessage, actualMessage);
     }
 
+    // CR: Files.createTempFile() for correct path test
+
     @Test
     public void incorrectlyPathEntered() {
         String[] args = new String[]{"fsd"};
         String curDir = System.getProperty("user.dir");
+        // CR: ???
         String summaryPath = curDir + File.separator + "fsd";
 
         JduOptionsParser jduOptionsParser = new JduOptionsParser();

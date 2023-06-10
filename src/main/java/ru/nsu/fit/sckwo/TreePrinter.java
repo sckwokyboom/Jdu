@@ -26,16 +26,17 @@ import static java.lang.Integer.min;
 import static ru.nsu.fit.sckwo.utils.PrinterUtils.bytesToHumanReadableFormat;
 import static ru.nsu.fit.sckwo.utils.PrinterUtils.getCurrentCompoundIndent;
 
+// CR: separate printing and traversing a tree
 public class TreePrinter {
     private final JduOptions options;
     private final PrintStream printStream;
     private final Comparator<DuFile> comparator;
     private final FileSizeCacheCalculator fileSizeCacheCalculator;
     private String currentCompoundIndent = "";
-    private final ArrayList<Integer> countsOfChildren;
+    private final List<Integer> countsOfChildren;
     private static final Logger LOGGER = Logger.getLogger(TreePrinter.class.getName());
 
-    private final ArrayList<Path> visited;
+    private final List<Path> visited;
 
     public TreePrinter(JduOptions options, @NotNull PrintStream printStream) throws JduInvalidArgumentsException {
         this.options = options;
@@ -43,6 +44,7 @@ public class TreePrinter {
         try {
             countsOfChildren = new ArrayList<>(options.depth());
             fileSizeCacheCalculator = new FileSizeCacheCalculator(options.depth());
+            // CR: do not catch, check depth beforehand
         } catch (OutOfMemoryError outOfMemoryError) {
             throw new JduInvalidArgumentsException("The value of the depth parameter is too large.", outOfMemoryError);
         }
@@ -50,9 +52,11 @@ public class TreePrinter {
         switch (options.comparatorType()) {
             case SIZE_COMPARATOR -> comparator = new DuFileSizeComparator(fileSizeCacheCalculator::size).reversed();
             case LEXICOGRAPHICAL_COMPARATOR -> comparator = new DuFileLexicographicalComparator();
+            // CR: assert
             case default -> throw new JduInvalidArgumentsException("Parameter not specified: comparator.");
         }
         try {
+            // CR: log4j
             Handler fileHandler = new FileHandler("log.txt");
             LOGGER.addHandler(fileHandler);
             LOGGER.setUseParentHandlers(false);
@@ -60,7 +64,11 @@ public class TreePrinter {
         }
     }
 
-    public void print(DuFile curFile, int curDepth) throws IOException {
+    public void print(DuFile curFile) throws IOException {
+        print(curFile, 0);
+    }
+
+    private void print(DuFile curFile, int curDepth) throws IOException {
         fileSizeCacheCalculator.setStartDepth(curDepth);
         printStream.println(
                 currentCompoundIndent
@@ -71,7 +79,7 @@ public class TreePrinter {
                         + curFile.getType().getName()
                         + "]");
         fileSizeCacheCalculator.removeCacheEntry(curFile.getPath());
-        if (curDepth >= options.depth() && curDepth > 0 && curDepth < MAX_VALUE) {
+        if (curDepth >= options.depth() && curDepth < MAX_VALUE) {
             return;
         }
         switch (curFile.getType()) {
@@ -99,7 +107,7 @@ public class TreePrinter {
         }
     }
 
-    public void printDirectory(DuFile curFile, int curDepth) {
+    private void printDirectory(DuFile curFile, int curDepth) {
         try (Stream<Path> childrenFilesStream = Files.list(curFile.getPath())) {
             List<Path> childrenFilesPaths = childrenFilesStream.toList();
             ArrayList<DuFile> children = new ArrayList<>();

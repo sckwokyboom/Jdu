@@ -11,9 +11,9 @@ public class Main {
             JduOptions jduOptions = jduOptionsParser.parseOptions(args);
             Jdu jdu = new Jdu(jduOptions, System.out);
             jdu.printFileTree();
+            // CR: split catches
         } catch (JduException | IOException e) {
             System.err.println(e.getMessage());
         }
-
     }
 }

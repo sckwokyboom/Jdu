@@ -4,25 +4,27 @@ import ru.nsu.fit.sckwo.dufile.DuFileType;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.List;
 
 public class PrinterUtils {
     private static final String INDENT_TAB = "   ";
 
+    // CR: move to units
     public static String bytesToHumanReadableFormat(long fileSizeInBytes) {
         assert fileSizeInBytes >= 0;
-        assert fileSizeInBytes < Long.MAX_VALUE;
         if (fileSizeInBytes < 1024) {
             return fileSizeInBytes + " " + FileSizeUnit.BYTE.getName();
         }
         final FileSizeUnit[] UNITS = FileSizeUnit.values();
         int digitGroups = (int) (Math.log(fileSizeInBytes) / Math.log(1024));
         double convertedSize = fileSizeInBytes / Math.pow(1024, digitGroups);
+        // CR: Math.min?
         FileSizeUnit currentUnit = UNITS[digitGroups];
         DecimalFormat decimalFormat = new DecimalFormat("#,##0.##");
         return decimalFormat.format(convertedSize) + " " + currentUnit.getName();
     }
 
-    public static String getCurrentCompoundIndent(int currentDepth, ArrayList<Integer> countsOfChildren, DuFileType duFileType) {
+    public static String getCurrentCompoundIndent(int currentDepth, List<Integer> countsOfChildren, DuFileType duFileType) {
         StringBuilder builder = new StringBuilder();
         String INDENT_HORIZONTAL = "─";
         if (duFileType == DuFileType.SYMLINK) {

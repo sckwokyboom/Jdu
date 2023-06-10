@@ -21,7 +21,7 @@ public class Jdu {
     public void printFileTree() throws IOException, JduInvalidArgumentsException {
         TreePrinter treePrinter = new TreePrinter(options, printStream);
         try {
-            treePrinter.print(new DuFile(options.rootAbsolutePath()), 0);
+            treePrinter.print(new DuFile(options.rootAbsolutePath()));
         } catch (RuntimeException e) {
             throw new JduRuntimeException(e);
         }

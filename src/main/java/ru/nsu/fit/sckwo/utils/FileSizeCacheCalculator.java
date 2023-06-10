@@ -33,10 +33,11 @@ public class FileSizeCacheCalculator {
 
     @NotNull
     public Long size(Path absoluteFilePath) {
+        // CR: what happens if null?
         try {
             return cache.get(absoluteFilePath);
         } catch (ExecutionException e) {
-            return (long) 0;
+            return 0L;
         }
     }
 
@@ -69,6 +70,7 @@ public class FileSizeCacheCalculator {
 
     private long sizeOf(Path filePath) {
         Objects.requireNonNull(filePath, "path");
+        // CR: check what happens with symlink
         if (Files.isDirectory(filePath)) {
             return sizeOfDirectory(filePath);
         } else {
