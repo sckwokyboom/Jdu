@@ -4,9 +4,11 @@ import org.junit.Assert;
 import org.junit.Test;
 import ru.nsu.fit.sckwo.exception.JduInvalidArgumentsException;
 
-import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import static java.lang.Integer.MAX_VALUE;
 
 public class JduOptionsParserTest extends DuTest {
     @Test
@@ -144,23 +146,14 @@ public class JduOptionsParserTest extends DuTest {
         Assert.assertEquals(expectedMessage, actualMessage);
     }
 
-    // CR: Files.createTempFile() for correct path test
-
     @Test
-    public void incorrectlyPathEntered() {
-        String[] args = new String[]{"fsd"};
-        String curDir = System.getProperty("user.dir");
-        // CR: ???
-        String summaryPath = curDir + File.separator + "fsd";
+    public void correctPathParameterTest() throws IOException {
+        Path tempFile = Files.createTempFile("test", ".txt");
+        String[] args = new String[]{tempFile.toAbsolutePath().toString()};
 
         JduOptionsParser jduOptionsParser = new JduOptionsParser();
-        JduInvalidArgumentsException thrown = Assert.assertThrows(
-                JduInvalidArgumentsException.class,
-                () -> jduOptionsParser.parseOptions(args));
-        String expectedMessage = "jdu: " + summaryPath + " does not exist.";
-        String actualMessage = thrown.getMessage();
-
-        Assert.assertEquals(expectedMessage, actualMessage);
+        JduOptions jduOptions = jduOptionsParser.parseOptions(args);
+        Assert.assertEquals(tempFile, jduOptions.rootAbsolutePath());
     }
 
     @Test
@@ -192,5 +185,50 @@ public class JduOptionsParserTest extends DuTest {
         Assert.assertEquals(actualMessage1, expectedMessage1);
         Assert.assertEquals(actualMessage2, expectedMessage2);
         Assert.assertEquals(actualMessage3, expectedMessage3);
+    }
+
+    @Test
+    public void tooManyPathParametersTest() throws IOException {
+        Path tempFile = Files.createTempFile("test", ".txt");
+        Path tempFile2 = Files.createTempFile("test2", ".txt");
+        String[] args = new String[]{tempFile.toAbsolutePath().toString(), tempFile2.toAbsolutePath().toString()};
+
+        JduOptionsParser jduOptionsParser = new JduOptionsParser();
+        JduInvalidArgumentsException thrown = Assert.assertThrows(
+                JduInvalidArgumentsException.class,
+                () -> jduOptionsParser.parseOptions(args));
+        String expectedMessage = "jdu: Too many path parameters.";
+        String actualMessage = thrown.getMessage();
+        Assert.assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void toLargeParameterLimitOptionTest() {
+        String[] args = new String[]{"-limit", String.valueOf(MAX_VALUE)};
+
+        JduOptionsParser jduOptionsParser = new JduOptionsParser();
+        JduInvalidArgumentsException thrown = Assert.assertThrows(
+                JduInvalidArgumentsException.class,
+                () -> jduOptionsParser.parseOptions(args));
+
+        String expectedMessage = "jdu: \"" + MAX_VALUE + "\"" + " is too large number in option: limit";
+        String actualMessage = thrown.getMessage();
+
+        Assert.assertEquals(expectedMessage, actualMessage);
+    }
+
+    @Test
+    public void toLargeParameterDepthOptionTest() {
+        String[] args = new String[]{"-depth", String.valueOf(MAX_VALUE)};
+
+        JduOptionsParser jduOptionsParser = new JduOptionsParser();
+        JduInvalidArgumentsException thrown = Assert.assertThrows(
+                JduInvalidArgumentsException.class,
+                () -> jduOptionsParser.parseOptions(args));
+
+        String expectedMessage = "jdu: \"" + MAX_VALUE + "\"" + " is too large number in option: depth";
+        String actualMessage = thrown.getMessage();
+
+        Assert.assertEquals(expectedMessage, actualMessage);
     }
 }

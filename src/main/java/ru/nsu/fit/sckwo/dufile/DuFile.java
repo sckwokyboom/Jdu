@@ -1,39 +1,40 @@
 package ru.nsu.fit.sckwo.dufile;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.function.ToLongFunction;
 
 public class DuFile {
     private final Path absolutePath;
     private long size = -1;
     private final DuFileType fileType;
 
-    public DuFile(Path absolutePath) {
-        this.absolutePath = absolutePath;
+    public DuFile(@NotNull Path path) {
+        this.absolutePath = path.toAbsolutePath();
         fileType = recognizeFileType();
     }
 
-    // CR: just set size
-    public long getSize(ToLongFunction<Path> sizeOf) {
-        if (size == -1
-                && fileType != DuFileType.UNKNOWN_FORMAT_FILE
-                && fileType != DuFileType.DANGLING_SYMLINK
-                && fileType != DuFileType.BROKEN_SYMLINK) {
-            size = sizeOf.applyAsLong(absolutePath);
-        }
+    public long getSize() {
         return size;
     }
 
-    public Path getPath() {
+    public void setSize(long size) {
+        this.size = size;
+    }
+
+    @NotNull
+    public Path getAbsolutePath() {
         return absolutePath;
     }
 
+    @NotNull
     public DuFileType getType() {
         return fileType;
     }
 
+    @NotNull
     private DuFileType recognizeFileType() {
         if (Files.isSymbolicLink(absolutePath)) {
             return recognizeTypeOfSymlink();
@@ -46,6 +47,7 @@ public class DuFile {
         }
     }
 
+    @NotNull
     private DuFileType recognizeTypeOfSymlink() {
         try {
             if (Files.exists(Files.readSymbolicLink(absolutePath))) {

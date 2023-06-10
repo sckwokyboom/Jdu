@@ -3,6 +3,8 @@ package ru.nsu.fit.sckwo;
 import org.junit.Assert;
 import org.junit.Test;
 import ru.nsu.fit.sckwo.comparators.ComparatorType;
+import ru.nsu.fit.sckwo.exception.JduException;
+import ru.nsu.fit.sckwo.exception.JduRuntimeException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -17,10 +19,10 @@ public class TreePrinterTest extends DuTest {
     public void testWithResult(JduOptions jduOptions, String answer) {
         ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
         try (PrintStream pos = new PrintStream(byteOutput)) {
-            Jdu jdu = new Jdu(jduOptions, pos);
-            jdu.printFileTree();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            TreePrinter treePrinter = new TreePrinter(jduOptions, pos);
+            treePrinter.print(jduOptions.rootAbsolutePath());
+        } catch (JduException e) {
+            throw new JduRuntimeException(e);
         }
         Assert.assertEquals("The results don't match:", answer, byteOutput.toString());
     }
@@ -41,8 +43,8 @@ public class TreePrinterTest extends DuTest {
                 rootPath.toAbsolutePath());
 
         testWithResult(jduOptions, """
-                foo [0 B] [directory]\r
-                ╰─ bar.txt [0 B] [regular]\r
+                foo [0 B] [directory]\r
+                ╰─ bar.txt [0 B] [regular]\r
                 """);
     }
 
@@ -60,7 +62,7 @@ public class TreePrinterTest extends DuTest {
                 rootPath.toAbsolutePath());
 
         testWithResult(jduOptions, """
-                foo [0 B] [directory]\r
+                foo [0 B] [directory]\r
                 """);
     }
 
@@ -78,11 +80,47 @@ public class TreePrinterTest extends DuTest {
                 rootPath.toAbsolutePath());
 
         testWithResult(jduOptions, """
-                foo [0 B] [regular]\r
+                foo [0 B] [regular]\r
                 """);
     }
 
-    // CR: printOnlyOneSymlinkTest
+    @Test
+    public void printOnlyOneSymlinkTest() throws IOException {
+        FileSystem fs = fileSystem();
+        Path rootPath = fs.getPath("foo");
+        Path parentPath = fs.getPath(".");
+        Files.createSymbolicLink(rootPath, parentPath);
+
+        // Test for followSymlink = false
+        {
+            JduOptions jduOptions = new JduOptions(
+                    false,
+                    256,
+                    256,
+                    ComparatorType.SIZE_COMPARATOR,
+                    rootPath.toAbsolutePath());
+
+            testWithResult(jduOptions, """
+                    foo [0 B] [symlink]\r
+                    """);
+        }
+
+        // Test for followSymlink = true
+        {
+            JduOptions jduOptions = new JduOptions(
+                    true,
+                    256,
+                    256,
+                    ComparatorType.SIZE_COMPARATOR,
+                    rootPath.toAbsolutePath());
+
+            testWithResult(jduOptions, """
+                    foo [0 B] [symlink]\r
+                    ╰▷ . [0 B] [directory]\r
+                        ╰─ foo [0 B] [symlink]\r
+                        """);
+        }
+    }
 
     @Test
     public void printTwoDirectoriesInLexicographicOrderTest() throws IOException {
@@ -117,13 +155,13 @@ public class TreePrinterTest extends DuTest {
                 rootPath.toAbsolutePath());
 
         testWithResult(jduOptions, """
-                root [0 B] [directory]\r
-                ├─ dir1 [0 B] [directory]\r
-                │   ├─ file1 [0 B] [regular]\r
-                │   ╰─ file3 [0 B] [regular]\r
-                ╰─ dir2 [0 B] [directory]\r
-                    ├─ file2 [0 B] [regular]\r
-                    ╰─ file4 [0 B] [regular]\r
+                root [0 B] [directory]\r
+                ├─ dir1 [0 B] [directory]\r
+                │   ├─ file1 [0 B] [regular]\r
+                │   ╰─ file3 [0 B] [regular]\r
+                ╰─ dir2 [0 B] [directory]\r
+                    ├─ file2 [0 B] [regular]\r
+                    ╰─ file4 [0 B] [regular]\r
                 """);
     }
 
@@ -150,12 +188,12 @@ public class TreePrinterTest extends DuTest {
                     rootPath.toAbsolutePath());
 
             testWithResult(jduOptions, """
-                    root [0 B] [directory]\r
-                    ├─ dir1 [0 B] [directory]\r
-                    │   ╰─ file [0 B] [regular]\r
-                    ╰─ dir2 [0 B] [directory]\r
-                        ╰─ link [0 B] [symlink]\r
-                            ╰▷ file [0 B] [regular]\r
+                    root [0 B] [directory]\r
+                    ├─ dir1 [0 B] [directory]\r
+                    │   ╰─ file [0 B] [regular]\r
+                    ╰─ dir2 [0 B] [directory]\r
+                        ╰─ link [0 B] [symlink]\r
+                            ╰▷ file [0 B] [regular]\r
                     """);
         }
 
@@ -168,11 +206,11 @@ public class TreePrinterTest extends DuTest {
                     rootPath.toAbsolutePath());
 
             testWithResult(jduOptions, """
-                    root [0 B] [directory]\r
-                    ├─ dir1 [0 B] [directory]\r
-                    │   ╰─ file [0 B] [regular]\r
-                    ╰─ dir2 [0 B] [directory]\r
-                        ╰─ link [0 B] [symlink]\r
+                    root [0 B] [directory]\r
+                    ├─ dir1 [0 B] [directory]\r
+                    │   ╰─ file [0 B] [regular]\r
+                    ╰─ dir2 [0 B] [directory]\r
+                        ╰─ link [0 B] [symlink]\r
                     """);
         }
     }
@@ -200,19 +238,19 @@ public class TreePrinterTest extends DuTest {
                     rootPath.toAbsolutePath());
 
             testWithResult(jduOptions, """
-                    root [0 B] [directory]\r
-                    ├─ dir1 [0 B] [directory]\r
-                    │   ╰─ link1 [0 B] [symlink]\r
-                    │       ╰▷ dir2 [0 B] [directory]\r
-                    │           ╰─ link2 [0 B] [symlink]\r
-                    │               ╰▷ dir1 [0 B] [directory]\r
-                    │                   ╰─ link1 [0 B] [symlink]\r
-                    ╰─ dir2 [0 B] [directory]\r
-                        ╰─ link2 [0 B] [symlink]\r
-                            ╰▷ dir1 [0 B] [directory]\r
-                                ╰─ link1 [0 B] [symlink]\r
-                                    ╰▷ dir2 [0 B] [directory]\r
-                                        ╰─ link2 [0 B] [symlink]\r
+                    root [0 B] [directory]\r
+                    ├─ dir1 [0 B] [directory]\r
+                    │   ╰─ link1 [0 B] [symlink]\r
+                    │       ╰▷ dir2 [0 B] [directory]\r
+                    │           ╰─ link2 [0 B] [symlink]\r
+                    │               ╰▷ dir1 [0 B] [directory]\r
+                    │                   ╰─ link1 [0 B] [symlink]\r
+                    ╰─ dir2 [0 B] [directory]\r
+                        ╰─ link2 [0 B] [symlink]\r
+                            ╰▷ dir1 [0 B] [directory]\r
+                                ╰─ link1 [0 B] [symlink]\r
+                                    ╰▷ dir2 [0 B] [directory]\r
+                                        ╰─ link2 [0 B] [symlink]\r
                     """);
         }
 
@@ -225,41 +263,13 @@ public class TreePrinterTest extends DuTest {
                     rootPath.toAbsolutePath());
 
             testWithResult(jduOptions, """
-                    root [0 B] [directory]\r
-                    ├─ dir1 [0 B] [directory]\r
-                    │   ╰─ link1 [0 B] [symlink]\r
-                    ╰─ dir2 [0 B] [directory]\r
-                        ╰─ link2 [0 B] [symlink]\r
+                    root [0 B] [directory]\r
+                    ├─ dir1 [0 B] [directory]\r
+                    │   ╰─ link1 [0 B] [symlink]\r
+                    ╰─ dir2 [0 B] [directory]\r
+                        ╰─ link2 [0 B] [symlink]\r
                     """);
         }
-    }
-
-    //TODO: may be it is a bad idea???
-    @Test
-    public void edgeCaseLimitOptionTest() throws IOException {
-        FileSystem fs = fileSystem();
-        Path rootPath = fs.getPath("foo");
-        Files.createDirectory(rootPath);
-        Path childrenPath = rootPath.resolve("bar.txt");
-        Files.createFile(childrenPath);
-        Path linkPath = rootPath.resolve("link");
-        Files.createSymbolicLink(linkPath, rootPath);
-
-        JduOptions jduOptions = new JduOptions(
-                true,
-                256,
-                Integer.MAX_VALUE,
-                ComparatorType.SIZE_COMPARATOR,
-                rootPath.toAbsolutePath());
-
-        testWithResult(jduOptions, """
-                foo [0 B] [directory]\r
-                ├─ bar.txt [0 B] [regular]\r
-                ╰─ link [0 B] [symlink]\r
-                    ╰▷ foo [0 B] [directory]\r
-                        ├─ bar.txt [0 B] [regular]\r
-                        ╰─ link [0 B] [symlink]\r
-                """);
     }
 
     @Test
@@ -286,27 +296,27 @@ public class TreePrinterTest extends DuTest {
                 rootPath.toAbsolutePath());
 
         testWithResult(jduOptions, """
-                root [0 B] [directory]\r
-                ├─ dir [0 B] [directory]\r
-                │   ├─ file0.txt [0 B] [regular]\r
-                │   ├─ file1.txt [0 B] [regular]\r
-                │   ├─ file10.txt [0 B] [regular]\r
-                │   ├─ file11.txt [0 B] [regular]\r
-                │   ├─ file12.txt [0 B] [regular]\r
-                │   ├─ file13.txt [0 B] [regular]\r
-                │   ├─ file14.txt [0 B] [regular]\r
-                │   ├─ file15.txt [0 B] [regular]\r
-                │   ├─ file16.txt [0 B] [regular]\r
-                │   ╰─ file17.txt [0 B] [regular]\r
-                ├─ file1.txt [0 B] [regular]\r
-                ├─ file2.txt [0 B] [regular]\r
-                ├─ file3.txt [0 B] [regular]\r
-                ├─ file4.txt [0 B] [regular]\r
-                ├─ file5.txt [0 B] [regular]\r
-                ├─ file6.txt [0 B] [regular]\r
-                ├─ file7.txt [0 B] [regular]\r
-                ├─ file8.txt [0 B] [regular]\r
-                ╰─ file9.txt [0 B] [regular]\r
+                root [0 B] [directory]\r
+                ├─ dir [0 B] [directory]\r
+                │   ├─ file0.txt [0 B] [regular]\r
+                │   ├─ file1.txt [0 B] [regular]\r
+                │   ├─ file10.txt [0 B] [regular]\r
+                │   ├─ file11.txt [0 B] [regular]\r
+                │   ├─ file12.txt [0 B] [regular]\r
+                │   ├─ file13.txt [0 B] [regular]\r
+                │   ├─ file14.txt [0 B] [regular]\r
+                │   ├─ file15.txt [0 B] [regular]\r
+                │   ├─ file16.txt [0 B] [regular]\r
+                │   ╰─ file17.txt [0 B] [regular]\r
+                ├─ file1.txt [0 B] [regular]\r
+                ├─ file2.txt [0 B] [regular]\r
+                ├─ file3.txt [0 B] [regular]\r
+                ├─ file4.txt [0 B] [regular]\r
+                ├─ file5.txt [0 B] [regular]\r
+                ├─ file6.txt [0 B] [regular]\r
+                ├─ file7.txt [0 B] [regular]\r
+                ├─ file8.txt [0 B] [regular]\r
+                ╰─ file9.txt [0 B] [regular]\r
                 """);
     }
 
@@ -351,13 +361,13 @@ public class TreePrinterTest extends DuTest {
                 rootPath.toAbsolutePath());
 
         testWithResult(jduOptions, """
-                root [1 GB] [directory]\r
-                ├─ dir2 [1 GB] [directory]\r
-                │   ├─ file4 [953,67 MB] [regular]\r
-                │   ╰─ file2 [70,57 MB] [regular]\r
-                ╰─ dir1 [1,07 MB] [directory]\r
-                    ├─ file3 [976,56 KB] [regular]\r
-                    ╰─ file1 [122,07 KB] [regular]\r
+                root [1 GB] [directory]\r
+                ├─ dir2 [1 GB] [directory]\r
+                │   ├─ file4 [953.67 MB] [regular]\r
+                │   ╰─ file2 [70.57 MB] [regular]\r
+                ╰─ dir1 [1.07 MB] [directory]\r
+                    ├─ file3 [976.56 KB] [regular]\r
+                    ╰─ file1 [122.07 KB] [regular]\r
                 """);
     }
 
@@ -395,25 +405,25 @@ public class TreePrinterTest extends DuTest {
                     rootPath.toAbsolutePath());
 
             testWithResult(jduOptions, """
-                    root [75 B] [directory]\r
-                    ├─ dir1 [75 B] [directory]\r
-                    │   ╰─ dirInside [75 B] [directory]\r
-                    │       ├─ fileInside [75 B] [regular]\r
-                    │       ╰─ link1 [0 B] [symlink]\r
-                    │           ╰▷ dir2 [0 B] [directory]\r
-                    │               ╰─ link2 [0 B] [symlink]\r
-                    │                   ╰▷ dir1 [75 B] [directory]\r
-                    │                       ╰─ dirInside [75 B] [directory]\r
-                    │                           ├─ fileInside [75 B] [regular]\r
-                    │                           ╰─ link1 [0 B] [symlink]\r
-                    ╰─ dir2 [0 B] [directory]\r
-                        ╰─ link2 [0 B] [symlink]\r
-                            ╰▷ dir1 [75 B] [directory]\r
-                                ╰─ dirInside [75 B] [directory]\r
-                                    ├─ fileInside [75 B] [regular]\r
-                                    ╰─ link1 [0 B] [symlink]\r
-                                        ╰▷ dir2 [0 B] [directory]\r
-                                            ╰─ link2 [0 B] [symlink]\r
+                    root [75 B] [directory]\r
+                    ├─ dir1 [75 B] [directory]\r
+                    │   ╰─ dirInside [75 B] [directory]\r
+                    │       ├─ fileInside [75 B] [regular]\r
+                    │       ╰─ link1 [0 B] [symlink]\r
+                    │           ╰▷ dir2 [0 B] [directory]\r
+                    │               ╰─ link2 [0 B] [symlink]\r
+                    │                   ╰▷ dir1 [75 B] [directory]\r
+                    │                       ╰─ dirInside [75 B] [directory]\r
+                    │                           ├─ fileInside [75 B] [regular]\r
+                    │                           ╰─ link1 [0 B] [symlink]\r
+                    ╰─ dir2 [0 B] [directory]\r
+                        ╰─ link2 [0 B] [symlink]\r
+                            ╰▷ dir1 [75 B] [directory]\r
+                                ╰─ dirInside [75 B] [directory]\r
+                                    ├─ fileInside [75 B] [regular]\r
+                                    ╰─ link1 [0 B] [symlink]\r
+                                        ╰▷ dir2 [0 B] [directory]\r
+                                            ╰─ link2 [0 B] [symlink]\r
                      """);
         }
 
@@ -427,9 +437,9 @@ public class TreePrinterTest extends DuTest {
                     rootPath.toAbsolutePath());
 
             testWithResult(jduOptions, """
-                    root [75 B] [directory]\r
-                    ├─ dir1 [75 B] [directory]\r
-                    ╰─ dir2 [0 B] [directory]\r
+                    root [75 B] [directory]\r
+                    ├─ dir1 [75 B] [directory]\r
+                    ╰─ dir2 [0 B] [directory]\r
                     """);
         }
 
@@ -443,11 +453,11 @@ public class TreePrinterTest extends DuTest {
                     rootPath.toAbsolutePath());
 
             testWithResult(jduOptions, """
-                    root [75 B] [directory]\r
-                    ├─ dir1 [75 B] [directory]\r
-                    │   ╰─ dirInside [75 B] [directory]\r
-                    ╰─ dir2 [0 B] [directory]\r
-                        ╰─ link2 [0 B] [symlink]\r
+                    root [75 B] [directory]\r
+                    ├─ dir1 [75 B] [directory]\r
+                    │   ╰─ dirInside [75 B] [directory]\r
+                    ╰─ dir2 [0 B] [directory]\r
+                        ╰─ link2 [0 B] [symlink]\r
                     """);
         }
 
@@ -461,14 +471,14 @@ public class TreePrinterTest extends DuTest {
                     rootPath.toAbsolutePath());
 
             testWithResult(jduOptions, """
-                    root [75 B] [directory]\r
-                    ├─ dir1 [75 B] [directory]\r
-                    │   ╰─ dirInside [75 B] [directory]\r
-                    │       ├─ fileInside [75 B] [regular]\r
-                    │       ╰─ link1 [0 B] [symlink]\r
-                    ╰─ dir2 [0 B] [directory]\r
-                        ╰─ link2 [0 B] [symlink]\r
-                            ╰▷ dir1 [75 B] [directory]\r
+                    root [75 B] [directory]\r
+                    ├─ dir1 [75 B] [directory]\r
+                    │   ╰─ dirInside [75 B] [directory]\r
+                    │       ├─ fileInside [75 B] [regular]\r
+                    │       ╰─ link1 [0 B] [symlink]\r
+                    ╰─ dir2 [0 B] [directory]\r
+                        ╰─ link2 [0 B] [symlink]\r
+                            ╰▷ dir1 [75 B] [directory]\r
                     """);
         }
 
@@ -482,16 +492,16 @@ public class TreePrinterTest extends DuTest {
                     rootPath.toAbsolutePath());
 
             testWithResult(jduOptions, """
-                    root [75 B] [directory]\r
-                    ├─ dir1 [75 B] [directory]\r
-                    │   ╰─ dirInside [75 B] [directory]\r
-                    │       ├─ fileInside [75 B] [regular]\r
-                    │       ╰─ link1 [0 B] [symlink]\r
-                    │           ╰▷ dir2 [0 B] [directory]\r
-                    ╰─ dir2 [0 B] [directory]\r
-                        ╰─ link2 [0 B] [symlink]\r
-                            ╰▷ dir1 [75 B] [directory]\r
-                                ╰─ dirInside [75 B] [directory]\r
+                    root [75 B] [directory]\r
+                    ├─ dir1 [75 B] [directory]\r
+                    │   ╰─ dirInside [75 B] [directory]\r
+                    │       ├─ fileInside [75 B] [regular]\r
+                    │       ╰─ link1 [0 B] [symlink]\r
+                    │           ╰▷ dir2 [0 B] [directory]\r
+                    ╰─ dir2 [0 B] [directory]\r
+                        ╰─ link2 [0 B] [symlink]\r
+                            ╰▷ dir1 [75 B] [directory]\r
+                                ╰─ dirInside [75 B] [directory]\r
                     """);
         }
     }

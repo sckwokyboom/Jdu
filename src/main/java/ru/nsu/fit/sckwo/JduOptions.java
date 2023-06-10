@@ -26,10 +26,12 @@ public record JduOptions(boolean followSymlinks,
     }
 
     @Override
+    @NotNull
     public ComparatorType comparatorType() {
         return comparatorType;
     }
 
+    @NotNull
     public Path rootAbsolutePath() {
         return rootAbsolutePath;
     }

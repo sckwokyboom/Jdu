@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -25,6 +26,7 @@ public class FileSizeCacheCalculator {
                 .expireAfterWrite(100, TimeUnit.MINUTES)
                 .build(new CacheLoader<>() {
                     @Override
+                    @NotNull
                     public Long load(@NotNull Path absolutePath) {
                         return sizeOf(absolutePath);
                     }
@@ -32,16 +34,15 @@ public class FileSizeCacheCalculator {
     }
 
     @NotNull
-    public Long size(Path absoluteFilePath) {
-        // CR: what happens if null?
+    public Long size(@NotNull Path absoluteFilePath) {
         try {
             return cache.get(absoluteFilePath);
         } catch (ExecutionException e) {
-            return 0L;
+            return -1L;
         }
     }
 
-    public void removeCacheEntry(Path absoluteFilePathToRemove) {
+    public void removeCacheEntry(@NotNull Path absoluteFilePathToRemove) {
         cache.invalidate(absoluteFilePathToRemove);
     }
 
@@ -49,28 +50,9 @@ public class FileSizeCacheCalculator {
         this.startDepth = startDepth;
     }
 
-    public Long cacheEntriesSize() {
-        return cache.size();
-    }
 
-    private static void requireExists(Path file) {
-        Objects.requireNonNull(file, "directory");
-        if (!Files.exists(file)) {
-            throw new IllegalArgumentException("File system element for parameter '" + "directory" + "' does not exist: '" + file + "'");
-        }
-    }
-
-    private static void requireDirectory(Path directory) {
-        Objects.requireNonNull(directory, "directory");
-        if (!Files.isDirectory(directory)) {
-            throw new IllegalArgumentException("Parameter '" + "directory" + "' is not a directory: '" + directory + "'");
-        }
-    }
-
-
-    private long sizeOf(Path filePath) {
+    private long sizeOf(@NotNull Path filePath) {
         Objects.requireNonNull(filePath, "path");
-        // CR: check what happens with symlink
         if (Files.isDirectory(filePath)) {
             return sizeOfDirectory(filePath);
         } else {
@@ -83,28 +65,27 @@ public class FileSizeCacheCalculator {
     }
 
 
-    private long sizeOfDirectory(Path directory) {
-        Objects.requireNonNull(directory, "directory");
-        try (Stream<Path> children = Files.list(directory)) {
+    private long sizeOfDirectory(@NotNull Path directory) {
+        try (Stream<Path> childrenFilesStream = Files.list(directory)) {
             startDepth++;
-            long size = children.mapToLong(file -> {
-                long sizeOfFile = 0;
-                if (!Files.isSymbolicLink(file)) {
-                    try {
+            List<Path> childrenFilesPaths = childrenFilesStream.toList();
+            long size = 0;
+            for (Path childPath : childrenFilesPaths) {
+                try {
+                    if (!Files.isSymbolicLink(childPath)) {
                         if (startDepth <= depthLimit) {
-                            sizeOfFile = cache.get(file.toAbsolutePath());
+                            size += cache.get(childPath.toAbsolutePath());
                         } else {
-                            sizeOfFile = sizeOf(file);
+                            size += sizeOf(childPath);
                         }
-                    } catch (ExecutionException ignored) {
                     }
+                } catch (ExecutionException ignored) {
                 }
-                return sizeOfFile;
-            }).sum();
+            }
             startDepth--;
             return size;
         } catch (IOException ignored) {
+            return -1L;
         }
-        return 0;
     }
 }
