@@ -6,7 +6,6 @@ import org.jetbrains.annotations.NotNull;
 import ru.nsu.fit.sckwo.comparators.DuFileLexicographicalComparator;
 import ru.nsu.fit.sckwo.comparators.DuFileSizeComparator;
 import ru.nsu.fit.sckwo.dufile.DuFile;
-import ru.nsu.fit.sckwo.dufile.DuFileType;
 import ru.nsu.fit.sckwo.exception.JduRuntimeException;
 import ru.nsu.fit.sckwo.utils.FileSizeCacheCalculator;
 
@@ -121,9 +120,7 @@ public class TreePrinter {
     }
 
     private void setSizeToFile(@NotNull DuFile curFile) {
-        if (curFile.getType() != DuFileType.UNKNOWN_FORMAT_FILE
-                && curFile.getType() != DuFileType.BROKEN_SYMLINK
-                && curFile.getType() != DuFileType.DANGLING_SYMLINK) {
+        if (curFile.isFileSizeCountable()) {
             curFile.setSize(fileSizeCacheCalculator.size(curFile.getAbsolutePath()));
         }
     }

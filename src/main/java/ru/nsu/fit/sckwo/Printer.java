@@ -47,9 +47,7 @@ public class Printer {
 
     private static String getHumanReadableSizeOf(DuFile file) {
         String formattedFileByteSize = "";
-        if (file.getType() != DuFileType.UNKNOWN_FORMAT_FILE
-                && file.getType() != DuFileType.BROKEN_SYMLINK
-                && file.getType() != DuFileType.DANGLING_SYMLINK) {
+        if (file.isFileSizeCountable()) {
             formattedFileByteSize = "[" + bytesToHumanReadableFormat(file.getSize()) + "] ";
         }
         return formattedFileByteSize;

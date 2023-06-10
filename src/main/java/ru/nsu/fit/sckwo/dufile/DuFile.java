@@ -58,6 +58,11 @@ public class DuFile {
         } catch (IOException e) {
             return DuFileType.BROKEN_SYMLINK;
         }
+    }
 
+    public boolean isFileSizeCountable() {
+        return fileType != DuFileType.UNKNOWN_FORMAT_FILE
+                && fileType != DuFileType.BROKEN_SYMLINK
+                && fileType != DuFileType.DANGLING_SYMLINK;
     }
 }
