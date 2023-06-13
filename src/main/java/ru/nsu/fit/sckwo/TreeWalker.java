@@ -6,11 +6,11 @@ import org.jetbrains.annotations.NotNull;
 import ru.nsu.fit.sckwo.comparators.DuFileLexicographicalComparator;
 import ru.nsu.fit.sckwo.comparators.DuFileSizeComparator;
 import ru.nsu.fit.sckwo.dufile.DuFile;
+import ru.nsu.fit.sckwo.dufile.DuFileType;
 import ru.nsu.fit.sckwo.exception.JduRuntimeException;
 import ru.nsu.fit.sckwo.utils.FileSizeCacheCalculator;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -21,16 +21,16 @@ import java.util.stream.Stream;
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.min;
 
-public class TreePrinter {
+public class TreeWalker {
     private final JduOptions options;
     private final Comparator<DuFile> comparator;
     private final FileSizeCacheCalculator fileSizeCacheCalculator;
     private final Printer printer;
-    private static final Logger logger = LogManager.getLogger(TreePrinter.class);
+    private static final Logger logger = LogManager.getLogger(TreeWalker.class);
     private final List<Path> visited;
 
-    public TreePrinter(@NotNull JduOptions options, @NotNull PrintStream printStream) {
-        printer = new Printer(options.depth(), printStream);
+    public TreeWalker(@NotNull JduOptions options, @NotNull Printer printer) {
+        this.printer = printer;
         this.options = options;
         fileSizeCacheCalculator = new FileSizeCacheCalculator(options.depth());
         visited = new ArrayList<>();
@@ -44,30 +44,35 @@ public class TreePrinter {
         }
     }
 
-    public void print(@NotNull Path root) throws JduRuntimeException {
+    public void walk(@NotNull Path root) throws JduRuntimeException {
         try {
-            print(new DuFile(root), 0);
+            DuFile rootFile = new DuFile(root);
+            walk(rootFile, 0, rootFile.getType() == DuFileType.SYMLINK);
         } catch (IOException e) {
             throw new JduRuntimeException(e);
         }
     }
 
-    private void print(@NotNull DuFile curFile, int curDepth) throws IOException {
+    private void walk(@NotNull DuFile curFile, int curDepth, boolean isParentSymlink) throws IOException {
         fileSizeCacheCalculator.setStartDepth(curDepth);
         setSizeToFile(curFile);
-        printer.printFileInfo(curFile);
         fileSizeCacheCalculator.removeCacheEntry(curFile.getAbsolutePath());
-        if (curDepth >= options.depth() && curDepth < MAX_VALUE) {
+        if (curDepth > options.depth() && curDepth < MAX_VALUE) {
             return;
         }
         switch (curFile.getType()) {
-            case SYMLINK -> printSymlink(curFile, curDepth);
-            case DIRECTORY -> printDirectory(curFile, curDepth);
-            case default -> printer.addCountOfChildrenOnRecursionLevel(curDepth, 0);
+            case SYMLINK -> walkSymlink(curFile, curDepth, isParentSymlink);
+            case DIRECTORY -> walkDirectory(curFile, curDepth, isParentSymlink);
+            case default -> {
+                printer.visitFile(curDepth, 0, isParentSymlink);
+                printer.printFileInfo(curFile);
+            }
         }
     }
 
-    private void printSymlink(@NotNull DuFile curFile, int curDepth) {
+    private void walkSymlink(@NotNull DuFile curFile, int curDepth, boolean isParentSymlink) {
+        printer.visitFile(curDepth, 1, isParentSymlink);
+        printer.printFileInfo(curFile);
         try {
             if (options.followSymlinks()) {
                 if (visited.contains(curFile.getAbsolutePath().toAbsolutePath().normalize())) {
@@ -75,9 +80,7 @@ public class TreePrinter {
                 }
                 visited.add(curFile.getAbsolutePath().toAbsolutePath().normalize());
                 DuFile targetOfSymLink = new DuFile(Files.readSymbolicLink(curFile.getAbsolutePath()));
-                printer.addCountOfChildrenOnRecursionLevel(curDepth, 0);
-                printer.updateCurrentCompoundIndent(curFile, curDepth + 1);
-                print(targetOfSymLink, curDepth + 1);
+                walk(targetOfSymLink, curDepth + 1, true);
                 visited.clear();
             }
         } catch (IOException e) {
@@ -85,7 +88,7 @@ public class TreePrinter {
         }
     }
 
-    private void printDirectory(@NotNull DuFile curFile, int curDepth) {
+    private void walkDirectory(@NotNull DuFile curFile, int curDepth, boolean isParentSymlink) {
         try (Stream<Path> childrenFilesStream = Files.list(curFile.getAbsolutePath())) {
             List<Path> childrenFilesPaths = childrenFilesStream.toList();
             ArrayList<DuFile> children = new ArrayList<>();
@@ -96,7 +99,8 @@ public class TreePrinter {
             }
             children.sort(comparator);
             int countOfFiles = min(children.size(), options.limit());
-            printer.addCountOfChildrenOnRecursionLevel(curDepth, countOfFiles);
+            printer.visitFile(curDepth, countOfFiles, isParentSymlink);
+            printer.printFileInfo(curFile);
             children
                     .stream()
                     .skip(options.limit())
@@ -105,10 +109,8 @@ public class TreePrinter {
                     .stream()
                     .limit(countOfFiles)
                     .forEach(child -> {
-                        printer.decrementCountOfChildrenOnCurrentRecursionLevel(curDepth);
-                        printer.updateCurrentCompoundIndent(curFile, curDepth + 1);
                         try {
-                            print(child, curDepth + 1);
+                            walk(child, curDepth + 1, false);
                         } catch (IOException e) {
                             logger.error("Unable to get access to the file: {0}", e);
                         }

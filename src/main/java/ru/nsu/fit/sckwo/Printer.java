@@ -2,7 +2,6 @@ package ru.nsu.fit.sckwo;
 
 import org.jetbrains.annotations.NotNull;
 import ru.nsu.fit.sckwo.dufile.DuFile;
-import ru.nsu.fit.sckwo.dufile.DuFileType;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -33,16 +32,24 @@ public class Printer {
 
     }
 
+    public void visitFile(int depthLevel, int countOfChildren, boolean isParenSymlink) {
+        if (depthLevel > 0) {
+            decrementCountOfChildrenOnRecursionLevel(depthLevel - 1);
+        }
+        addCountOfChildrenOnRecursionLevel(depthLevel, countOfChildren);
+        updateCurrentCompoundIndent(depthLevel, isParenSymlink);
+    }
+
     public void addCountOfChildrenOnRecursionLevel(int depthLevel, int countOfChildren) {
         countsOfChildren.add(depthLevel, countOfChildren);
     }
 
-    public void decrementCountOfChildrenOnCurrentRecursionLevel(int depthLevel) {
+    public void decrementCountOfChildrenOnRecursionLevel(int depthLevel) {
         countsOfChildren.set(depthLevel, countsOfChildren.get(depthLevel) - 1);
     }
 
-    public void updateCurrentCompoundIndent(DuFile curFile, int curDepth) {
-        currentCompoundIndent = getCurrentCompoundIndent(curDepth, countsOfChildren, curFile.getType());
+    public void updateCurrentCompoundIndent(int curDepth, boolean isParentSymlink) {
+        currentCompoundIndent = getCurrentCompoundIndent(curDepth, countsOfChildren, isParentSymlink);
     }
 
     private static String getHumanReadableSizeOf(DuFile file) {
@@ -53,13 +60,16 @@ public class Printer {
         return formattedFileByteSize;
     }
 
-    public static String getCurrentCompoundIndent(int currentDepth, List<Integer> countsOfChildren, DuFileType duFileType) {
+    public static String getCurrentCompoundIndent(int currentDepth, List<Integer> countsOfChildren, boolean isParentSymlink) {
         StringBuilder builder = new StringBuilder();
         String INDENT_HORIZONTAL = "─";
-        if (duFileType == DuFileType.SYMLINK) {
+        if (isParentSymlink) {
             INDENT_HORIZONTAL = "▷";
         }
         for (int i = 0; i < countsOfChildren.size(); i++) {
+            if (currentDepth == 0) {
+                break;
+            }
             if (i == currentDepth - 1) {
                 if (countsOfChildren.get(i) == 0) {
                     builder.append("╰").append(INDENT_HORIZONTAL).append(" ");

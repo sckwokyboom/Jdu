@@ -14,13 +14,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-public class TreePrinterTest extends DuTest {
+public class TreeWalkerTest extends DuTest {
 
     public void testWithResult(JduOptions jduOptions, String answer) {
         ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
         try (PrintStream pos = new PrintStream(byteOutput)) {
-            TreePrinter treePrinter = new TreePrinter(jduOptions, pos);
-            treePrinter.print(jduOptions.rootAbsolutePath());
+            Printer printer = new Printer(jduOptions.depth(), pos);
+            TreeWalker treePrinter = new TreeWalker(jduOptions, printer);
+            treePrinter.walk(jduOptions.rootAbsolutePath());
         } catch (JduException e) {
             throw new JduRuntimeException(e);
         }

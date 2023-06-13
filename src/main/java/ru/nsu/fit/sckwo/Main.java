@@ -7,8 +7,9 @@ public class Main {
         try {
             JduOptionsParser jduOptionsParser = new JduOptionsParser();
             JduOptions jduOptions = jduOptionsParser.parseOptions(args);
-            TreePrinter treePrinter = new TreePrinter(jduOptions, System.out);
-            treePrinter.print(jduOptions.rootAbsolutePath());
+            Printer printer = new Printer(jduOptions.depth(), System.out);
+            TreeWalker treeWalker = new TreeWalker(jduOptions, printer);
+            treeWalker.walk(jduOptions.rootAbsolutePath());
         } catch (JduException e) {
             System.err.println(e.getMessage());
         }
