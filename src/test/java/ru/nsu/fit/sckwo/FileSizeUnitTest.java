@@ -2,6 +2,7 @@ package ru.nsu.fit.sckwo;
 
 import org.junit.Assert;
 import org.junit.Test;
+import ru.nsu.fit.sckwo.core.DuTest;
 import ru.nsu.fit.sckwo.utils.FileSizeUnit;
 
 public class FileSizeUnitTest extends DuTest {

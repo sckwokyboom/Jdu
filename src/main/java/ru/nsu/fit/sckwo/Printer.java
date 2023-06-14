@@ -2,11 +2,13 @@ package ru.nsu.fit.sckwo;
 
 import org.jetbrains.annotations.NotNull;
 import ru.nsu.fit.sckwo.dufile.DuFile;
+import ru.nsu.fit.sckwo.dufile.DuFileType;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import static ru.nsu.fit.sckwo.dufile.DuFileType.isFileSizeCountable;
 import static ru.nsu.fit.sckwo.utils.FileSizeUnit.bytesToHumanReadableFormat;
 
 public class Printer {
@@ -14,10 +16,15 @@ public class Printer {
     private final PrintStream printStream;
     private String currentCompoundIndent = "";
     private final List<Integer> countsOfChildren;
+    private boolean isParentSymlink = false;
+    private final int depthLimit;
+    private final boolean followSymlinks;
 
-    public Printer(int depthLimit, @NotNull PrintStream printStream) {
+    public Printer(JduOptions jduOptions, @NotNull PrintStream printStream) {
         this.printStream = printStream;
-        countsOfChildren = new ArrayList<>(depthLimit);
+        countsOfChildren = new ArrayList<>(jduOptions.depth());
+        depthLimit = jduOptions.depth();
+        followSymlinks = jduOptions.followSymlinks();
     }
 
     public void printFileInfo(DuFile curFile) {
@@ -32,12 +39,23 @@ public class Printer {
 
     }
 
-    public void visitFile(int depthLevel, int countOfChildren, boolean isParenSymlink) {
+    public void visitFile(DuFile curFile, int depthLevel) {
+        if (depthLevel > depthLimit || curFile.getType() == DuFileType.LOOP_SYMLINK) {
+            isParentSymlink = false;
+            return;
+        }
         if (depthLevel > 0) {
             decrementCountOfChildrenOnRecursionLevel(depthLevel - 1);
         }
-        addCountOfChildrenOnRecursionLevel(depthLevel, countOfChildren);
-        updateCurrentCompoundIndent(depthLevel, isParenSymlink);
+        if (curFile.getType() == DuFileType.SYMLINK) {
+            addCountOfChildrenOnRecursionLevel(depthLevel, 1);
+            updateCurrentCompoundIndent(depthLevel);
+            isParentSymlink = followSymlinks;
+        } else {
+            addCountOfChildrenOnRecursionLevel(depthLevel, curFile.getChildren().size());
+            updateCurrentCompoundIndent(depthLevel);
+            isParentSymlink = false;
+        }
     }
 
     public void addCountOfChildrenOnRecursionLevel(int depthLevel, int countOfChildren) {
@@ -48,19 +66,19 @@ public class Printer {
         countsOfChildren.set(depthLevel, countsOfChildren.get(depthLevel) - 1);
     }
 
-    public void updateCurrentCompoundIndent(int curDepth, boolean isParentSymlink) {
-        currentCompoundIndent = getCurrentCompoundIndent(curDepth, countsOfChildren, isParentSymlink);
+    public void updateCurrentCompoundIndent(int curDepth) {
+        currentCompoundIndent = getCompoundIndent(curDepth, countsOfChildren, isParentSymlink);
     }
 
     private static String getHumanReadableSizeOf(DuFile file) {
         String formattedFileByteSize = "";
-        if (file.isFileSizeCountable()) {
+        if (isFileSizeCountable(file.getType())) {
             formattedFileByteSize = "[" + bytesToHumanReadableFormat(file.getSize()) + "] ";
         }
         return formattedFileByteSize;
     }
 
-    public static String getCurrentCompoundIndent(int currentDepth, List<Integer> countsOfChildren, boolean isParentSymlink) {
+    public static String getCompoundIndent(int currentDepth, List<Integer> countsOfChildren, boolean isParentSymlink) {
         StringBuilder builder = new StringBuilder();
         String INDENT_HORIZONTAL = "─";
         if (isParentSymlink) {

@@ -20,6 +20,8 @@ import java.util.stream.Stream;
 
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.min;
+import static ru.nsu.fit.sckwo.dufile.DuFileType.isFileSizeCountable;
+import static ru.nsu.fit.sckwo.dufile.DuFileType.recognizeFileType;
 
 public class TreeWalker {
     private final JduOptions options;
@@ -46,41 +48,45 @@ public class TreeWalker {
 
     public void walk(@NotNull Path root) throws JduRuntimeException {
         try {
-            DuFile rootFile = new DuFile(root);
-            walk(rootFile, 0, rootFile.getType() == DuFileType.SYMLINK);
+            DuFile rootFile = new DuFile(root, DuFileType.recognizeFileType(root));
+            walk(rootFile, 0);
         } catch (IOException e) {
             throw new JduRuntimeException(e);
         }
     }
 
-    private void walk(@NotNull DuFile curFile, int curDepth, boolean isParentSymlink) throws IOException {
+    private void walk(@NotNull DuFile curFile, int curDepth) throws IOException {
         fileSizeCacheCalculator.setStartDepth(curDepth);
         setSizeToFile(curFile);
         fileSizeCacheCalculator.removeCacheEntry(curFile.getAbsolutePath());
         if (curDepth > options.depth() && curDepth < MAX_VALUE) {
+            printer.visitFile(curFile, curDepth);
             return;
         }
         switch (curFile.getType()) {
-            case SYMLINK -> walkSymlink(curFile, curDepth, isParentSymlink);
-            case DIRECTORY -> walkDirectory(curFile, curDepth, isParentSymlink);
+            case SYMLINK -> walkSymlink(curFile, curDepth);
+            case DIRECTORY -> walkDirectory(curFile, curDepth);
             case default -> {
-                printer.visitFile(curDepth, 0, isParentSymlink);
+                printer.visitFile(curFile, curDepth);
                 printer.printFileInfo(curFile);
             }
         }
     }
 
-    private void walkSymlink(@NotNull DuFile curFile, int curDepth, boolean isParentSymlink) {
-        printer.visitFile(curDepth, 1, isParentSymlink);
+    private void walkSymlink(@NotNull DuFile curFile, int curDepth) {
+        printer.visitFile(curFile, curDepth);
         printer.printFileInfo(curFile);
         try {
             if (options.followSymlinks()) {
                 if (visited.contains(curFile.getAbsolutePath().toAbsolutePath().normalize())) {
+                    curFile.setType(DuFileType.LOOP_SYMLINK);
+                    printer.visitFile(curFile, curDepth);
                     return;
                 }
                 visited.add(curFile.getAbsolutePath().toAbsolutePath().normalize());
-                DuFile targetOfSymLink = new DuFile(Files.readSymbolicLink(curFile.getAbsolutePath()));
-                walk(targetOfSymLink, curDepth + 1, true);
+                Path targetOfSymlinkPath = Files.readSymbolicLink(curFile.getAbsolutePath());
+                DuFile targetOfSymLink = new DuFile(targetOfSymlinkPath, recognizeFileType(targetOfSymlinkPath));
+                walk(targetOfSymLink, curDepth + 1);
                 visited.clear();
             }
         } catch (IOException e) {
@@ -88,18 +94,19 @@ public class TreeWalker {
         }
     }
 
-    private void walkDirectory(@NotNull DuFile curFile, int curDepth, boolean isParentSymlink) {
+    private void walkDirectory(@NotNull DuFile curFile, int curDepth) {
         try (Stream<Path> childrenFilesStream = Files.list(curFile.getAbsolutePath())) {
             List<Path> childrenFilesPaths = childrenFilesStream.toList();
             ArrayList<DuFile> children = new ArrayList<>();
             for (Path childFilePath : childrenFilesPaths) {
-                DuFile child = new DuFile(childFilePath);
+                DuFile child = new DuFile(childFilePath, DuFileType.recognizeFileType(childFilePath));
                 setSizeToFile(child);
                 children.add(child);
             }
             children.sort(comparator);
             int countOfFiles = min(children.size(), options.limit());
-            printer.visitFile(curDepth, countOfFiles, isParentSymlink);
+            curFile.getChildren().addAll(children.subList(0, countOfFiles));
+            printer.visitFile(curFile, curDepth);
             printer.printFileInfo(curFile);
             children
                     .stream()
@@ -110,7 +117,7 @@ public class TreeWalker {
                     .limit(countOfFiles)
                     .forEach(child -> {
                         try {
-                            walk(child, curDepth + 1, false);
+                            walk(child, curDepth + 1);
                         } catch (IOException e) {
                             logger.error("Unable to get access to the file: {0}", e);
                         }
@@ -122,7 +129,7 @@ public class TreeWalker {
     }
 
     private void setSizeToFile(@NotNull DuFile curFile) {
-        if (curFile.isFileSizeCountable()) {
+        if (isFileSizeCountable(curFile.getType())) {
             curFile.setSize(fileSizeCacheCalculator.size(curFile.getAbsolutePath()));
         }
     }

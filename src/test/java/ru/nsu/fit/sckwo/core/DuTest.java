@@ -1,4 +1,4 @@
-package ru.nsu.fit.sckwo;
+package ru.nsu.fit.sckwo.core;
 
 import org.junit.Rule;
 

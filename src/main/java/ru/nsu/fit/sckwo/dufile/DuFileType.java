@@ -1,5 +1,11 @@
 package ru.nsu.fit.sckwo.dufile;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 public enum DuFileType {
     REGULAR_FILE {
         public String getName() {
@@ -39,4 +45,36 @@ public enum DuFileType {
     };
 
     public abstract String getName();
+
+    public static boolean isFileSizeCountable(@NotNull DuFileType fileType) {
+        return fileType != DuFileType.UNKNOWN_FORMAT_FILE
+                && fileType != DuFileType.BROKEN_SYMLINK
+                && fileType != DuFileType.DANGLING_SYMLINK;
+    }
+
+    @NotNull
+    public static DuFileType recognizeFileType(@NotNull Path absolutePath) {
+        if (Files.isSymbolicLink(absolutePath)) {
+            return recognizeTypeOfSymlink(absolutePath);
+        } else if (Files.isDirectory(absolutePath)) {
+            return DuFileType.DIRECTORY;
+        } else if (Files.isRegularFile(absolutePath)) {
+            return DuFileType.REGULAR_FILE;
+        } else {
+            return DuFileType.UNKNOWN_FORMAT_FILE;
+        }
+    }
+
+    @NotNull
+    private static DuFileType recognizeTypeOfSymlink(@NotNull Path absolutePath) {
+        try {
+            if (Files.exists(Files.readSymbolicLink(absolutePath))) {
+                return DuFileType.SYMLINK;
+            } else {
+                return DuFileType.DANGLING_SYMLINK;
+            }
+        } catch (IOException e) {
+            return DuFileType.BROKEN_SYMLINK;
+        }
+    }
 }

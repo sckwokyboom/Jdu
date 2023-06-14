@@ -2,18 +2,21 @@ package ru.nsu.fit.sckwo.dufile;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DuFile {
     private final Path absolutePath;
     private long size = -1;
-    private final DuFileType fileType;
+    private DuFileType fileType;
+    private final List<DuFile> children;
 
-    public DuFile(@NotNull Path path) {
+
+    public DuFile(@NotNull Path path, @NotNull DuFileType fileType) {
         this.absolutePath = path.toAbsolutePath();
-        fileType = recognizeFileType();
+        this.fileType = fileType;
+        children = new ArrayList<>();
     }
 
     public long getSize() {
@@ -34,35 +37,12 @@ public class DuFile {
         return fileType;
     }
 
-    @NotNull
-    private DuFileType recognizeFileType() {
-        if (Files.isSymbolicLink(absolutePath)) {
-            return recognizeTypeOfSymlink();
-        } else if (Files.isDirectory(absolutePath)) {
-            return DuFileType.DIRECTORY;
-        } else if (Files.isRegularFile(absolutePath)) {
-            return DuFileType.REGULAR_FILE;
-        } else {
-            return DuFileType.UNKNOWN_FORMAT_FILE;
-        }
+    public void setType(DuFileType type) {
+        this.fileType = type;
     }
 
     @NotNull
-    private DuFileType recognizeTypeOfSymlink() {
-        try {
-            if (Files.exists(Files.readSymbolicLink(absolutePath))) {
-                return DuFileType.SYMLINK;
-            } else {
-                return DuFileType.DANGLING_SYMLINK;
-            }
-        } catch (IOException e) {
-            return DuFileType.BROKEN_SYMLINK;
-        }
-    }
-
-    public boolean isFileSizeCountable() {
-        return fileType != DuFileType.UNKNOWN_FORMAT_FILE
-                && fileType != DuFileType.BROKEN_SYMLINK
-                && fileType != DuFileType.DANGLING_SYMLINK;
+    public List<DuFile> getChildren() {
+        return children;
     }
 }
