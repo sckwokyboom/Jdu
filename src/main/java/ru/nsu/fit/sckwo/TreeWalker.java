@@ -74,7 +74,7 @@ public class TreeWalker {
         printer.visitFile(curFile, curDepth);
         try {
             if (options.followSymlinks()) {
-                if (visited.contains(curFile.getAbsolutePath().toAbsolutePath().normalize())) {
+                if (visited.contains(curFile.getAbsolutePath().normalize())) {
                     curFile.setType(DuFileType.LOOP_SYMLINK);
                     printer.visitFile(curFile, curDepth);
                     return;
@@ -82,6 +82,7 @@ public class TreeWalker {
                 visited.add(curFile.getAbsolutePath().toAbsolutePath().normalize());
                 Path targetOfSymlinkPath = Files.readSymbolicLink(curFile.getAbsolutePath());
                 DuFile targetOfSymLink = new DuFile(targetOfSymlinkPath, recognizeFileType(targetOfSymlinkPath));
+                curFile.getChildren().add(targetOfSymLink);
                 walk(targetOfSymLink, curDepth + 1);
                 visited.clear();
             }

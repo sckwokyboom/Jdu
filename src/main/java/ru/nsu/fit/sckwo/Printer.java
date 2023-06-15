@@ -27,21 +27,8 @@ public class Printer implements FileVisitor {
         followSymlinks = jduOptions.followSymlinks();
     }
 
-    private void printFileInfo(DuFile curFile) {
-        printStream.println(
-                currentCompoundIndent
-                        + curFile.getAbsolutePath().getFileName()
-                        + " "
-                        + getHumanReadableSizeOf(curFile)
-                        + "["
-                        + curFile.getType().getName()
-                        + "]");
-
-    }
-
     @Override
     public void visitFile(DuFile curFile, int depthLevel) {
-        printFileInfo(curFile);
         if (depthLevel > depthLimit || curFile.getType() == DuFileType.LOOP_SYMLINK) {
             isParentSymlink = false;
             return;
@@ -58,6 +45,19 @@ public class Printer implements FileVisitor {
             updateCurrentCompoundIndent(depthLevel);
             isParentSymlink = false;
         }
+        printFileInfo(curFile);
+    }
+
+    private void printFileInfo(DuFile curFile) {
+        printStream.println(
+                currentCompoundIndent
+                        + curFile.getAbsolutePath().getFileName()
+                        + " "
+                        + getHumanReadableSizeOf(curFile)
+                        + "["
+                        + curFile.getType().getName()
+                        + "]");
+
     }
 
     private void addCountOfChildrenOnRecursionLevel(int depthLevel, int countOfChildren) {
