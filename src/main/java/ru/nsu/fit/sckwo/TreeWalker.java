@@ -27,11 +27,11 @@ public class TreeWalker {
     private final JduOptions options;
     private final Comparator<DuFile> comparator;
     private final FileSizeCacheCalculator fileSizeCacheCalculator;
-    private final Printer printer;
+    private final FileVisitor printer;
     private static final Logger logger = LogManager.getLogger(TreeWalker.class);
     private final List<Path> visited;
 
-    public TreeWalker(@NotNull JduOptions options, @NotNull Printer printer) {
+    public TreeWalker(@NotNull JduOptions options, @NotNull FileVisitor printer) {
         this.printer = printer;
         this.options = options;
         fileSizeCacheCalculator = new FileSizeCacheCalculator(options.depth());
