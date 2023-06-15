@@ -27,8 +27,7 @@ public class Printer implements FileVisitor {
         followSymlinks = jduOptions.followSymlinks();
     }
 
-    @Override
-    public void printFileInfo(DuFile curFile) {
+    private void printFileInfo(DuFile curFile) {
         printStream.println(
                 currentCompoundIndent
                         + curFile.getAbsolutePath().getFileName()
@@ -42,6 +41,7 @@ public class Printer implements FileVisitor {
 
     @Override
     public void visitFile(DuFile curFile, int depthLevel) {
+        printFileInfo(curFile);
         if (depthLevel > depthLimit || curFile.getType() == DuFileType.LOOP_SYMLINK) {
             isParentSymlink = false;
             return;

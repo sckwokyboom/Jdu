@@ -66,16 +66,12 @@ public class TreeWalker {
         switch (curFile.getType()) {
             case SYMLINK -> walkSymlink(curFile, curDepth);
             case DIRECTORY -> walkDirectory(curFile, curDepth);
-            case default -> {
-                printer.visitFile(curFile, curDepth);
-                printer.printFileInfo(curFile);
-            }
+            case default -> printer.visitFile(curFile, curDepth);
         }
     }
 
     private void walkSymlink(@NotNull DuFile curFile, int curDepth) {
         printer.visitFile(curFile, curDepth);
-        printer.printFileInfo(curFile);
         try {
             if (options.followSymlinks()) {
                 if (visited.contains(curFile.getAbsolutePath().toAbsolutePath().normalize())) {
@@ -107,7 +103,6 @@ public class TreeWalker {
             int countOfFiles = min(children.size(), options.limit());
             curFile.getChildren().addAll(children.subList(0, countOfFiles));
             printer.visitFile(curFile, curDepth);
-            printer.printFileInfo(curFile);
             children
                     .stream()
                     .skip(options.limit())

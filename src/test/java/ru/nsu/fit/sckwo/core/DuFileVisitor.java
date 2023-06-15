@@ -26,8 +26,7 @@ public class DuFileVisitor implements FileVisitor {
         this.results = results;
     }
 
-    @Override
-    public void printFileInfo(DuFile curFile) {
+    private void printFileInfo(DuFile curFile) {
         Assert.assertEquals(results[currentIndexInResults], curFile.getAbsolutePath().getFileName().toString());
         currentIndexInResults++;
         printStream.println(
