@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class DuFile {
     private final Path absolutePath;
@@ -44,5 +45,24 @@ public class DuFile {
     @NotNull
     public List<DuFile> getChildren() {
         return children;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (!(o instanceof DuFile otherDuFile)) {
+            return false;
+        }
+
+        return (this.absolutePath.getFileName().toString().equals(otherDuFile.absolutePath.getFileName().toString())
+                && this.getChildren().equals(otherDuFile.getChildren())
+                && this.getType() == otherDuFile.getType());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(fileType, absolutePath.getFileName(), children);
     }
 }
