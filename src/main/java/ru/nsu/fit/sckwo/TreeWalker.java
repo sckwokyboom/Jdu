@@ -27,12 +27,12 @@ public class TreeWalker {
     private final JduOptions options;
     private final Comparator<DuFile> comparator;
     private final FileSizeCacheCalculator fileSizeCacheCalculator;
-    private final FileVisitor printer;
+    private final FileVisitor visitor;
     private static final Logger logger = LogManager.getLogger(TreeWalker.class);
     private final List<Path> visited;
 
-    public TreeWalker(@NotNull JduOptions options, @NotNull FileVisitor printer) {
-        this.printer = printer;
+    public TreeWalker(@NotNull JduOptions options, @NotNull FileVisitor visitor) {
+        this.visitor = visitor;
         this.options = options;
         fileSizeCacheCalculator = new FileSizeCacheCalculator(options.depth());
         visited = new ArrayList<>();
@@ -60,23 +60,23 @@ public class TreeWalker {
         setSizeToFile(curFile);
         fileSizeCacheCalculator.removeCacheEntry(curFile.getAbsolutePath());
         if (curDepth > options.depth() && curDepth < MAX_VALUE) {
-            printer.visitFile(curFile, curDepth);
+            visitor.visitFile(curFile, curDepth);
             return;
         }
         switch (curFile.getType()) {
             case SYMLINK -> walkSymlink(curFile, curDepth);
             case DIRECTORY -> walkDirectory(curFile, curDepth);
-            case default -> printer.visitFile(curFile, curDepth);
+            case default -> visitor.visitFile(curFile, curDepth);
         }
     }
 
     private void walkSymlink(@NotNull DuFile curFile, int curDepth) {
-        printer.visitFile(curFile, curDepth);
+        visitor.visitFile(curFile, curDepth);
         try {
             if (options.followSymlinks()) {
                 if (visited.contains(curFile.getAbsolutePath().normalize())) {
                     curFile.setType(DuFileType.LOOP_SYMLINK);
-                    printer.visitFile(curFile, curDepth);
+                    visitor.visitFile(curFile, curDepth);
                     return;
                 }
                 visited.add(curFile.getAbsolutePath().toAbsolutePath().normalize());
@@ -103,7 +103,7 @@ public class TreeWalker {
             children.sort(comparator);
             int countOfFiles = min(children.size(), options.limit());
             curFile.getChildren().addAll(children.subList(0, countOfFiles));
-            printer.visitFile(curFile, curDepth);
+            visitor.visitFile(curFile, curDepth);
             children
                     .stream()
                     .skip(options.limit())
