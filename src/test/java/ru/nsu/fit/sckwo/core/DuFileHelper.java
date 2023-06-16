@@ -7,7 +7,7 @@ import ru.nsu.fit.sckwo.dufile.DuFileType;
 import java.nio.file.Path;
 import java.util.Arrays;
 
-public class FileSystemHelper {
+public class DuFileHelper {
     public static DuFile dir(String name, DuFile... children) {
         DuFile dir = new DuFile(Path.of(name), DuFileType.DIRECTORY);
         dir.getChildren().addAll(Arrays.stream(children).toList());

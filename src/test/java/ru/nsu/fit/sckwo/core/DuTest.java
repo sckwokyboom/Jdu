@@ -1,14 +1,19 @@
 package ru.nsu.fit.sckwo.core;
 
-import org.junit.Rule;
+//import org.junit.Rule;
+
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.nio.file.FileSystem;
 
+@ExtendWith(FileSystemRule.class)
+
 public class DuTest {
-    @Rule
+    @RegisterExtension
     public final FileSystemRule fileSystemRule = new FileSystemRule();
 
-    protected FileSystem fileSystem() {
+    public FileSystem fileSystem() {
         return fileSystemRule.getFileSystem();
     }
 

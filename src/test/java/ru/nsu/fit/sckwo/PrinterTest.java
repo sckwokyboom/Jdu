@@ -1,9 +1,8 @@
 package ru.nsu.fit.sckwo;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import ru.nsu.fit.sckwo.comparators.ComparatorType;
-import ru.nsu.fit.sckwo.core.DuTest;
 import ru.nsu.fit.sckwo.dufile.DuFile;
 import ru.nsu.fit.sckwo.dufile.DuFileType;
 import ru.nsu.fit.sckwo.exception.JduException;
@@ -16,9 +15,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static ru.nsu.fit.sckwo.core.FileSystemHelper.*;
+import static ru.nsu.fit.sckwo.core.DuFileHelper.*;
 
-public class PrinterTest extends DuTest {
+public class PrinterTest {
     private void testWithResult(JduOptions jduOptions, DuFile duFile, String answer) {
         ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
         try (PrintStream pos = new PrintStream(byteOutput)) {
@@ -27,7 +26,7 @@ public class PrinterTest extends DuTest {
         } catch (JduException e) {
             throw new JduRuntimeException(e);
         }
-        Assert.assertEquals("The results don't match:", answer, byteOutput.toString());
+        Assertions.assertEquals(answer, byteOutput.toString(), "The results don't match:");
     }
 
     private static void printHierarchy(Printer printer, DuFile currentFile, JduOptions jduOptions, int depth, Set<Path> visited) {
@@ -35,7 +34,6 @@ public class PrinterTest extends DuTest {
             return;
         }
         printer.visitFile(currentFile, depth);
-//        printer.printFileInfo(currentFile);
         if (currentFile.getType() == DuFileType.SYMLINK && !jduOptions.followSymlinks()) {
             return;
         }

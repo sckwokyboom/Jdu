@@ -1,31 +1,26 @@
 package ru.nsu.fit.sckwo.core;
 
 import com.google.common.jimfs.Jimfs;
-import org.junit.rules.TestRule;
-import org.junit.runner.Description;
-import org.junit.runners.model.Statement;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
 import java.nio.file.FileSystem;
 
-class FileSystemRule implements TestRule {
+public class FileSystemRule implements BeforeEachCallback, AfterEachCallback {
     private FileSystem fileSystem;
 
-    FileSystem getFileSystem() {
+    public FileSystem getFileSystem() {
         return this.fileSystem;
     }
 
     @Override
-    public Statement apply(final Statement base, Description description) {
-        return new Statement() {
-            @Override
-            public void evaluate() throws Throwable {
-                fileSystem = Jimfs.newFileSystem();
-                try {
-                    base.evaluate();
-                } finally {
-                    fileSystem.close();
-                }
-            }
-        };
+    public void beforeEach(ExtensionContext extensionContext) {
+        fileSystem = Jimfs.newFileSystem();
+    }
+
+    @Override
+    public void afterEach(ExtensionContext extensionContext) throws Exception {
+        fileSystem.close();
     }
 }
