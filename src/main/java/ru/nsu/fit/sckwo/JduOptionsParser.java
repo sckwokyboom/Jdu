@@ -26,7 +26,7 @@ public class JduOptionsParser {
         options.addOption("L", false, "Follow symlinks.");
     }
 
-    public JduOptions parseOptions(String[] args) {
+    public JduOptions parseOptions(@NotNull String[] args) {
         try {
             CommandLineParser parser = new DefaultParser();
             CommandLine cmd = parser.parse(options, args);
@@ -57,7 +57,7 @@ public class JduOptionsParser {
         }
     }
 
-    private int parseNumericOption(CommandLine cmd, String optionType, int limitValue, int defaultValue) throws JduInvalidArgumentsException {
+    private int parseNumericOption(@NotNull CommandLine cmd, @NotNull String optionType, int limitValue, int defaultValue) throws JduInvalidArgumentsException {
         int optionValue = defaultValue;
         if (cmd.hasOption(optionType)) {
             try {

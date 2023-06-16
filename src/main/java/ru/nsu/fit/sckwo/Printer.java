@@ -20,7 +20,7 @@ public class Printer implements FileVisitor {
     private final int depthLimit;
     private final boolean followSymlinks;
 
-    public Printer(JduOptions jduOptions, @NotNull PrintStream printStream) {
+    public Printer(@NotNull JduOptions jduOptions, @NotNull PrintStream printStream) {
         this.printStream = printStream;
         countsOfChildren = new ArrayList<>(jduOptions.depth());
         depthLimit = jduOptions.depth();
@@ -28,7 +28,7 @@ public class Printer implements FileVisitor {
     }
 
     @Override
-    public void visitFile(DuFile curFile, int depthLevel) {
+    public void visitFile(@NotNull DuFile curFile, int depthLevel) {
         if (depthLevel > depthLimit || curFile.getType() == DuFileType.LOOP_SYMLINK) {
             isParentSymlink = false;
             return;
@@ -48,7 +48,7 @@ public class Printer implements FileVisitor {
         printFileInfo(curFile);
     }
 
-    private void printFileInfo(DuFile curFile) {
+    private void printFileInfo(@NotNull DuFile curFile) {
         printStream.println(
                 currentCompoundIndent
                         + curFile.getAbsolutePath().getFileName()
@@ -72,7 +72,7 @@ public class Printer implements FileVisitor {
         currentCompoundIndent = getCompoundIndent(curDepth, countsOfChildren, isParentSymlink);
     }
 
-    private static String getHumanReadableSizeOf(DuFile file) {
+    private static String getHumanReadableSizeOf(@NotNull DuFile file) {
         String formattedFileByteSize = "";
         if (isFileSizeCountable(file.getType())) {
             formattedFileByteSize = "[" + bytesToHumanReadableFormat(file.getSize()) + "] ";
@@ -80,7 +80,7 @@ public class Printer implements FileVisitor {
         return formattedFileByteSize;
     }
 
-    private static String getCompoundIndent(int currentDepth, List<Integer> countsOfChildren, boolean isParentSymlink) {
+    private static String getCompoundIndent(int currentDepth, @NotNull List<Integer> countsOfChildren, boolean isParentSymlink) {
         StringBuilder builder = new StringBuilder();
         String INDENT_HORIZONTAL = "─";
         if (isParentSymlink) {

@@ -1,5 +1,6 @@
 package ru.nsu.fit.sckwo;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.nsu.fit.sckwo.comparators.ComparatorType;
@@ -20,21 +21,21 @@ import static ru.nsu.fit.sckwo.core.DuFileHelper.*;
 
 public final class TreeWalkerTest extends DuTest {
 
-    private static DuFile traverse(JduOptions jduOptions) {
+    private static DuFile traverse(@NotNull JduOptions jduOptions) {
         TestVisitor visitor = new TestVisitor();
         TreeWalker walker = new TreeWalker(jduOptions, visitor);
         walker.walk(jduOptions.rootAbsolutePath());
         return visitor.root;
     }
 
-    private static void printDuFileTree(DuFile root, int curDepth, PrintStream pos) {
+    private static void printDuFileTree(@NotNull DuFile root, int curDepth, @NotNull PrintStream pos) {
         pos.println("  ".repeat(curDepth) + root.getAbsolutePath().getFileName());
         for (DuFile child : root.getChildren()) {
             printDuFileTree(child, curDepth + 1, pos);
         }
     }
 
-    private static String getInfoMessage(DuFile expected, DuFile actual) {
+    private static String getInfoMessage(@NotNull DuFile expected, @NotNull DuFile actual) {
         ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
         try (PrintStream pos = new PrintStream(byteOutput)) {
             pos.println("\nExpected tree:");
@@ -51,7 +52,7 @@ public final class TreeWalkerTest extends DuTest {
         private DuFile root;
 
         @Override
-        public void visitFile(DuFile curFile, int depthLevel) {
+        public void visitFile(@NotNull DuFile curFile, int depthLevel) {
             if (depthLevel == 0) {
                 root = curFile;
             }

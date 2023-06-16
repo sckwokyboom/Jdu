@@ -1,6 +1,7 @@
 package ru.nsu.fit.sckwo.core;
 
 import com.google.common.jimfs.Jimfs;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -10,6 +11,7 @@ import java.nio.file.FileSystem;
 public class FileSystemRule implements BeforeEachCallback, AfterEachCallback {
     private FileSystem fileSystem;
 
+    @NotNull
     public FileSystem getFileSystem() {
         return this.fileSystem;
     }

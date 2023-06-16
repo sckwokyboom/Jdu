@@ -1,5 +1,6 @@
 package ru.nsu.fit.sckwo;
 
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.nsu.fit.sckwo.comparators.ComparatorType;
@@ -18,7 +19,7 @@ import java.util.Set;
 import static ru.nsu.fit.sckwo.core.DuFileHelper.*;
 
 public class PrinterTest {
-    private void testWithResult(JduOptions jduOptions, DuFile duFile, String answer) {
+    private void testWithResult(@NotNull JduOptions jduOptions, @NotNull DuFile duFile, @NotNull String answer) {
         ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
         try (PrintStream pos = new PrintStream(byteOutput)) {
             Printer printer = new Printer(jduOptions, pos);
@@ -29,7 +30,7 @@ public class PrinterTest {
         Assertions.assertEquals(answer, byteOutput.toString(), "The results don't match:");
     }
 
-    private static void printHierarchy(Printer printer, DuFile currentFile, JduOptions jduOptions, int depth, Set<Path> visited) {
+    private static void printHierarchy(@NotNull Printer printer, @NotNull DuFile currentFile, @NotNull JduOptions jduOptions, int depth, @NotNull Set<Path> visited) {
         if (depth > jduOptions.depth()) {
             return;
         }
