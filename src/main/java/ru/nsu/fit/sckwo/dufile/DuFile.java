@@ -3,21 +3,17 @@ package ru.nsu.fit.sckwo.dufile;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 public class DuFile {
     private final Path absolutePath;
     private long size = -1;
-    private DuFileType fileType;
-    // CR: nChildren / childrenCount
-    private final List<DuFile> children;
+    private final DuFileType fileType;
+    private int actualCountOfChildren;
 
     public DuFile(@NotNull Path path, @NotNull DuFileType fileType) {
         this.absolutePath = path.toAbsolutePath();
         this.fileType = fileType;
-        children = new ArrayList<>();
     }
 
     public long getSize() {
@@ -38,13 +34,12 @@ public class DuFile {
         return fileType;
     }
 
-    public void setType(DuFileType type) {
-        this.fileType = type;
+    public int getActualCountOfChildren() {
+        return actualCountOfChildren;
     }
 
-    @NotNull
-    public List<DuFile> getChildren() {
-        return children;
+    public void setActualCountOfChildren(int actualCountOfChildren) {
+        this.actualCountOfChildren = actualCountOfChildren;
     }
 
     @Override
@@ -57,12 +52,12 @@ public class DuFile {
         }
 
         return (this.absolutePath.getFileName().toString().equals(otherDuFile.absolutePath.getFileName().toString())
-                && this.getChildren().equals(otherDuFile.getChildren())
+                && this.getActualCountOfChildren() == otherDuFile.getActualCountOfChildren()
                 && this.getType() == otherDuFile.getType());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(fileType, absolutePath.getFileName(), children);
+        return Objects.hash(fileType, absolutePath.getFileName(), actualCountOfChildren);
     }
 }

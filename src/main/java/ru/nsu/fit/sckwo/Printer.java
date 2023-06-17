@@ -17,22 +17,53 @@ public class Printer implements FileVisitor {
     private String currentCompoundIndent = "";
     private final List<Integer> countsOfChildren;
     private boolean isParentSymlink = false;
-    private final int depthLimit;
+    private int previousDepthLevel = -1;
     private final boolean followSymlinks;
 
-    // CR: just pass two options from jdu options
-    public Printer(@NotNull JduOptions jduOptions, @NotNull PrintStream printStream) {
+    public Printer(@NotNull PrintStream printStream, int depthLimit, boolean followSymlinks) {
         this.printStream = printStream;
-        countsOfChildren = new ArrayList<>(jduOptions.depth());
-        depthLimit = jduOptions.depth();
-        followSymlinks = jduOptions.followSymlinks();
+        countsOfChildren = new ArrayList<>(depthLimit);
+        this.followSymlinks = followSymlinks;
     }
+
+    /**
+     * Prints information about the received file (its name, its size in human-readable units and its file type),
+     * and also builds a special formatted indent illustrating the file tree from the accumulated information
+     * when traversing the file tree and the recursion depth in the current file tree.
+     * File can be one of:
+     * <ul>
+     *     <li>regular file</li>
+     *     <li>directory</li>
+     *     <li>symlink</li>
+     *     <li>dangling symlink</li>
+     *     <li>broken symlink</li>
+     *     <li>unknown file (none of the above types)</li>
+     * </ul>
+     * <p/>
+     * Possible corner cases:
+     * <ul>
+     *     <li>file size is negative (cases when the size of the file cannot be calculated, but its name exists) <br/>
+     *     - do not show the size</li>
+     *     <li>file is a direct child of a symlink - the indentation is marked with a special arrow</li>
+     * </ul>
+     * <p/>
+     * Example of output:
+     * <pre>
+     * root [75 B] [directory]
+     * ├─ dir1 [75 B] [directory]
+     * │   ╰─ dirInside [75 B] [directory]
+     * │       ├─ fileInside [75 B] [regular]
+     * │       ╰─ link1 [0 B] [symlink]
+     * ╰─ dir2 [0 B] [directory]
+     *     ╰─ link2 [0 B] [symlink]
+     *         ╰▷ dir1 [75 B] [directory]
+     * </pre>
+     */
 
     @Override
     public void visitFile(@NotNull DuFile curFile, int depthLevel) {
-        if (depthLevel > depthLimit || curFile.getType() == DuFileType.LOOP_SYMLINK) {
+        if (depthLevel <= previousDepthLevel) {
             isParentSymlink = false;
-            return;
         }
         if (depthLevel > 0) {
             decrementCountOfChildrenOnRecursionLevel(depthLevel - 1);
@@ -42,11 +73,12 @@ public class Printer implements FileVisitor {
             updateCurrentCompoundIndent(depthLevel);
             isParentSymlink = followSymlinks;
         } else {
-            addCountOfChildrenOnRecursionLevel(depthLevel, curFile.getChildren().size());
+            addCountOfChildrenOnRecursionLevel(depthLevel, curFile.getActualCountOfChildren());
             updateCurrentCompoundIndent(depthLevel);
             isParentSymlink = false;
         }
         printFileInfo(curFile);
+        previousDepthLevel = depthLevel;
     }
 
     private void printFileInfo(@NotNull DuFile curFile) {

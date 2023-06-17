@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.nsu.fit.sckwo.comparators.ComparatorType;
+import ru.nsu.fit.sckwo.core.DuFileWithChildren;
 import ru.nsu.fit.sckwo.core.DuTest;
 import ru.nsu.fit.sckwo.dufile.DuFile;
 import ru.nsu.fit.sckwo.dufile.DuFileType;
@@ -16,26 +17,29 @@ import java.io.PrintStream;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
 
 import static ru.nsu.fit.sckwo.core.DuFileHelper.*;
 
 public final class TreeWalkerTest extends DuTest {
 
-    private static DuFile traverse(@NotNull JduOptions jduOptions) {
+    private static DuFileWithChildren traverse(@NotNull JduOptions jduOptions) {
         TestVisitor visitor = new TestVisitor();
         TreeWalker walker = new TreeWalker(jduOptions, visitor);
         walker.walk(jduOptions.rootAbsolutePath());
         return visitor.root;
     }
 
-    private static void printDuFileTree(@NotNull DuFile root, int curDepth, @NotNull PrintStream pos) {
+    private static void printDuFileTree(@NotNull DuFileWithChildren root, int curDepth, @NotNull PrintStream pos) {
         pos.println("  ".repeat(curDepth) + root.getAbsolutePath().getFileName());
-        for (DuFile child : root.getChildren()) {
+        for (DuFileWithChildren child : root.getChildren()) {
             printDuFileTree(child, curDepth + 1, pos);
         }
     }
 
-    private static String getInfoMessage(@NotNull DuFile expected, @NotNull DuFile actual) {
+    private static String getInfoMessage(@NotNull DuFileWithChildren expected, @NotNull DuFileWithChildren actual) {
         ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
         try (PrintStream pos = new PrintStream(byteOutput)) {
             pos.println("\nExpected tree:");
@@ -49,13 +53,40 @@ public final class TreeWalkerTest extends DuTest {
     }
 
     private static class TestVisitor implements FileVisitor {
-        private DuFile root;
+        private DuFileWithChildren root;
+
+        private int prevDepth = 0;
+
+        private final ArrayList<Deque<DuFileWithChildren>> allFiles = new ArrayList<>();
+
 
         @Override
-        public void visitFile(@NotNull DuFile curFile, int depthLevel) {
+        public void visitFile(DuFile curFile, int depthLevel) {
+            DuFileWithChildren curFileWithChildren = new DuFileWithChildren(curFile.getAbsolutePath(), curFile.getType());
             if (depthLevel == 0) {
-                root = curFile;
+                Deque<DuFileWithChildren> level = new ArrayDeque<>();
+                level.addLast(curFileWithChildren);
+                allFiles.add(depthLevel, level);
+                root = curFileWithChildren;
+                return;
             }
+            if (depthLevel > prevDepth) {
+                Deque<DuFileWithChildren> level = new ArrayDeque<>();
+                level.addLast(curFileWithChildren);
+                allFiles.add(depthLevel, level);
+                allFiles.get(prevDepth).getFirst().getChildren().add(curFileWithChildren);
+            }
+            if (depthLevel == prevDepth) {
+                allFiles.get(depthLevel).addLast(curFileWithChildren);
+                allFiles.get(depthLevel - 1).getFirst().getChildren().add(curFileWithChildren);
+            }
+            if (depthLevel < prevDepth) {
+                allFiles.get(depthLevel).clear();
+                allFiles.get(depthLevel).addLast(curFileWithChildren);
+                allFiles.get(depthLevel - 1).getFirst().getChildren().add(curFileWithChildren);
+                allFiles.get(prevDepth).clear();
+            }
+            prevDepth = depthLevel;
         }
     }
 
@@ -72,8 +103,8 @@ public final class TreeWalkerTest extends DuTest {
                     256,
                     ComparatorType.SIZE_COMPARATOR,
                     rootDir.toAbsolutePath());
-            DuFile expected = dir("dir", file("file"));
-            DuFile actual = traverse(jduOptions);
+            DuFileWithChildren expected = dir("dir", file("file"));
+            DuFileWithChildren actual = traverse(jduOptions);
             Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
         }
     }
@@ -95,8 +126,8 @@ public final class TreeWalkerTest extends DuTest {
                     256,
                     ComparatorType.SIZE_COMPARATOR,
                     rootDir.toAbsolutePath());
-            DuFile expected = dir("dir", file("file1"), file("file2"), file("file3"));
-            DuFile actual = traverse(jduOptions);
+            DuFileWithChildren expected = dir("dir", file("file1"), file("file2"), file("file3"));
+            DuFileWithChildren actual = traverse(jduOptions);
             Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
         }
     }
@@ -118,12 +149,12 @@ public final class TreeWalkerTest extends DuTest {
                     ComparatorType.SIZE_COMPARATOR,
                     rootSymlink.toAbsolutePath());
 
-            DuFile childOfSymlink = new DuFile(Path.of("dir"), DuFileType.DIRECTORY);
-            DuFile loopSymlinkToRoot = new DuFile(Path.of("loopSymlink"), DuFileType.SYMLINK);
-            loopSymlinkToRoot.getChildren().add(new DuFile(Path.of("symlink"), DuFileType.LOOP_SYMLINK));
+            DuFileWithChildren childOfSymlink = new DuFileWithChildren(Path.of("dir"), DuFileType.DIRECTORY);
+            DuFileWithChildren loopSymlinkToRoot = new DuFileWithChildren(Path.of("loopSymlink"), DuFileType.SYMLINK);
+            loopSymlinkToRoot.getChildren().add(new DuFileWithChildren(Path.of("symlink"), DuFileType.SYMLINK));
             childOfSymlink.getChildren().add(loopSymlinkToRoot);
-            DuFile expected = symlink("symlink", childOfSymlink);
-            DuFile actual = traverse(jduOptions);
+            DuFileWithChildren expected = symlink("symlink", childOfSymlink);
+            DuFileWithChildren actual = traverse(jduOptions);
             Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
         }
     }
@@ -142,8 +173,8 @@ public final class TreeWalkerTest extends DuTest {
                     ComparatorType.SIZE_COMPARATOR,
                     rootPath.toAbsolutePath());
 
-            DuFile expected = dir("foo");
-            DuFile actual = traverse(jduOptions);
+            DuFileWithChildren expected = dir("foo");
+            DuFileWithChildren actual = traverse(jduOptions);
             Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
         }
     }
@@ -161,8 +192,8 @@ public final class TreeWalkerTest extends DuTest {
                     ComparatorType.SIZE_COMPARATOR,
                     rootPath.toAbsolutePath());
 
-            DuFile expected = file("foo");
-            DuFile actual = traverse(jduOptions);
+            DuFileWithChildren expected = file("foo");
+            DuFileWithChildren actual = traverse(jduOptions);
             Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
         }
     }
@@ -189,8 +220,8 @@ public final class TreeWalkerTest extends DuTest {
                         256,
                         ComparatorType.SIZE_COMPARATOR,
                         rootSymlink.toAbsolutePath());
-                DuFile expected = symlink("symlink", dir("dir", file("file1"), file("file2"), file("file3")));
-                DuFile actual = traverse(jduOptions);
+                DuFileWithChildren expected = symlink("symlink", dir("dir", file("file1"), file("file2"), file("file3")));
+                DuFileWithChildren actual = traverse(jduOptions);
                 Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
             }
 
@@ -202,8 +233,8 @@ public final class TreeWalkerTest extends DuTest {
                         256,
                         ComparatorType.SIZE_COMPARATOR,
                         rootSymlink.toAbsolutePath());
-                DuFile expected = new DuFile(Path.of("symlink"), DuFileType.SYMLINK);
-                DuFile actual = traverse(jduOptions);
+                DuFileWithChildren expected = new DuFileWithChildren(Path.of("symlink"), DuFileType.SYMLINK);
+                DuFileWithChildren actual = traverse(jduOptions);
                 Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
             }
         }
@@ -242,8 +273,8 @@ public final class TreeWalkerTest extends DuTest {
                     ComparatorType.SIZE_COMPARATOR,
                     rootPath.toAbsolutePath());
 
-            DuFile expected = dir("root", dir("dir1", file("file1"), file("file3")), dir("dir2", file("file2"), file("file4")));
-            DuFile actual = traverse(jduOptions);
+            DuFileWithChildren expected = dir("root", dir("dir1", file("file1"), file("file3")), dir("dir2", file("file2"), file("file4")));
+            DuFileWithChildren actual = traverse(jduOptions);
             Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
         }
     }
@@ -295,8 +326,8 @@ public final class TreeWalkerTest extends DuTest {
                     ComparatorType.LEXICOGRAPHICAL_COMPARATOR,
                     rootPath.toAbsolutePath());
 
-            DuFile expected = dir("root");
-            DuFile dir = dir("dir");
+            DuFileWithChildren expected = dir("root");
+            DuFileWithChildren dir = dir("dir");
             dir.getChildren().add(file("file" + 0 + ".txt"));
             dir.getChildren().add(file("file" + 1 + ".txt"));
             dir.getChildren().add(file("file" + 10 + ".txt"));
@@ -309,10 +340,10 @@ public final class TreeWalkerTest extends DuTest {
             dir.getChildren().add(file("file" + 17 + ".txt"));
             expected.getChildren().add(dir);
             for (int i = 1; i < 10; i++) {
-                DuFile file = file("file" + i + ".txt");
+                DuFileWithChildren file = file("file" + i + ".txt");
                 expected.getChildren().add(file);
             }
-            DuFile actual = traverse(jduOptions);
+            DuFileWithChildren actual = traverse(jduOptions);
             Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
         }
     }
@@ -340,8 +371,8 @@ public final class TreeWalkerTest extends DuTest {
                         ComparatorType.LEXICOGRAPHICAL_COMPARATOR,
                         rootPath.toAbsolutePath());
 
-                DuFile expected = dir("root", dir("dir1", dir("dir2", dir("dir3", dir("dir4")))));
-                DuFile actual = traverse(jduOptions);
+                DuFileWithChildren expected = dir("root", dir("dir1", dir("dir2", dir("dir3", dir("dir4")))));
+                DuFileWithChildren actual = traverse(jduOptions);
                 Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
             }
 
@@ -354,8 +385,8 @@ public final class TreeWalkerTest extends DuTest {
                         ComparatorType.LEXICOGRAPHICAL_COMPARATOR,
                         rootPath.toAbsolutePath());
 
-                DuFile expected = dir("root", dir("dir1"));
-                DuFile actual = traverse(jduOptions);
+                DuFileWithChildren expected = dir("root");
+                DuFileWithChildren actual = traverse(jduOptions);
                 Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
             }
 
@@ -368,8 +399,8 @@ public final class TreeWalkerTest extends DuTest {
                         ComparatorType.LEXICOGRAPHICAL_COMPARATOR,
                         rootPath.toAbsolutePath());
 
-                DuFile expected = dir("root", dir("dir1", dir("dir2")));
-                DuFile actual = traverse(jduOptions);
+                DuFileWithChildren expected = dir("root", dir("dir1"));
+                DuFileWithChildren actual = traverse(jduOptions);
                 Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
             }
 
@@ -382,8 +413,8 @@ public final class TreeWalkerTest extends DuTest {
                         ComparatorType.LEXICOGRAPHICAL_COMPARATOR,
                         rootPath.toAbsolutePath());
 
-                DuFile expected = dir("root", dir("dir1", dir("dir2", dir("dir3"))));
-                DuFile actual = traverse(jduOptions);
+                DuFileWithChildren expected = dir("root", dir("dir1", dir("dir2")));
+                DuFileWithChildren actual = traverse(jduOptions);
                 Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
             }
 
@@ -396,8 +427,22 @@ public final class TreeWalkerTest extends DuTest {
                         ComparatorType.LEXICOGRAPHICAL_COMPARATOR,
                         rootPath.toAbsolutePath());
 
-                DuFile expected = dir("root", dir("dir1", dir("dir2", dir("dir3", dir("dir4")))));
-                DuFile actual = traverse(jduOptions);
+                DuFileWithChildren expected = dir("root", dir("dir1", dir("dir2", dir("dir3"))));
+                DuFileWithChildren actual = traverse(jduOptions);
+                Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
+            }
+
+            {
+                // depth = 4
+                JduOptions jduOptions = new JduOptions(
+                        true,
+                        4,
+                        256,
+                        ComparatorType.LEXICOGRAPHICAL_COMPARATOR,
+                        rootPath.toAbsolutePath());
+
+                DuFileWithChildren expected = dir("root", dir("dir1", dir("dir2", dir("dir3", dir("dir4")))));
+                DuFileWithChildren actual = traverse(jduOptions);
                 Assertions.assertEquals(expected, actual, () -> getInfoMessage(expected, actual));
             }
 

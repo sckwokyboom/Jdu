@@ -4,7 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.nsu.fit.sckwo.comparators.ComparatorType;
-import ru.nsu.fit.sckwo.dufile.DuFile;
+import ru.nsu.fit.sckwo.core.DuFileWithChildren;
 import ru.nsu.fit.sckwo.dufile.DuFileType;
 import ru.nsu.fit.sckwo.exception.JduException;
 import ru.nsu.fit.sckwo.exception.JduRuntimeException;
@@ -19,10 +19,10 @@ import java.util.Set;
 import static ru.nsu.fit.sckwo.core.DuFileHelper.*;
 
 public class PrinterTest {
-    private void testWithResult(@NotNull JduOptions jduOptions, @NotNull DuFile duFile, @NotNull String answer) {
+    private void testWithResult(@NotNull JduOptions jduOptions, @NotNull DuFileWithChildren duFile, @NotNull String answer) {
         ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
         try (PrintStream pos = new PrintStream(byteOutput)) {
-            Printer printer = new Printer(jduOptions, pos);
+            Printer printer = new Printer(pos, jduOptions.depth(), jduOptions.followSymlinks());
             printHierarchy(printer, duFile, jduOptions, 0, new HashSet<>());
         } catch (JduException e) {
             throw new JduRuntimeException(e);
@@ -30,7 +30,7 @@ public class PrinterTest {
         Assertions.assertEquals(answer, byteOutput.toString(), "The results don't match:");
     }
 
-    private static void printHierarchy(@NotNull Printer printer, @NotNull DuFile currentFile, @NotNull JduOptions jduOptions, int depth, @NotNull Set<Path> visited) {
+    private static void printHierarchy(@NotNull Printer printer, @NotNull DuFileWithChildren currentFile, @NotNull JduOptions jduOptions, int depth, @NotNull Set<Path> visited) {
         if (depth > jduOptions.depth()) {
             return;
         }
@@ -44,14 +44,17 @@ public class PrinterTest {
             }
             visited.add(currentFile.getAbsolutePath().getFileName());
         }
-        List<DuFile> children = currentFile.getChildren();
-        children.forEach(child -> printHierarchy(printer, child, jduOptions, depth + 1, visited));
+        List<DuFileWithChildren> children = currentFile.getChildren();
+        for (DuFileWithChildren child : children) {
+            printHierarchy(printer, child, jduOptions, depth + 1, visited);
+        }
+//        children.forEach(child -> printHierarchy(printer, child, jduOptions, depth + 1, visited));
     }
 
     @Test
     public void fileRootTest() {
 
-        DuFile fileRoot = file("root");
+        DuFileWithChildren fileRoot = file("root");
         JduOptions jduOptions = new JduOptions(
                 true,
                 256,
@@ -65,9 +68,9 @@ public class PrinterTest {
 
     @Test
     public void dirRootWithAllTypesOfFilesTest() {
-        DuFile fileTargetOfSymlink = file("fileTargetOfSymlink");
-        DuFile dirTargetOfSymlink = file("dirTargetOfSymlink");
-        DuFile root = dir("dir0",
+        DuFileWithChildren fileTargetOfSymlink = file("fileTargetOfSymlink");
+        DuFileWithChildren dirTargetOfSymlink = file("dirTargetOfSymlink");
+        DuFileWithChildren root = dir("dir0",
                 dir("dir1"),
                 file("file"),
                 symlink("symlinkToFile", fileTargetOfSymlink),
@@ -80,7 +83,7 @@ public class PrinterTest {
                     true,
                     256,
                     256,
-                    ComparatorType.SIZE_COMPARATOR,
+                    ComparatorType.LEXICOGRAPHICAL_COMPARATOR,
                     root.getAbsolutePath());
             testWithResult(jduOptions, root, """
                     dir0 [0 B] [directory]\r
@@ -119,8 +122,8 @@ public class PrinterTest {
 
     @Test
     public void symlinkRootWithDirTest() {
-        DuFile dir = dir("dir1", file("file1"), file("file2"));
-        DuFile symlinkRoot = symlink("symlink", dir);
+        DuFileWithChildren dir = dir("dir1", file("file1"), file("file2"));
+        DuFileWithChildren symlinkRoot = symlink("symlink", dir);
         JduOptions jduOptions = new JduOptions(
                 true,
                 256,
@@ -137,10 +140,11 @@ public class PrinterTest {
 
     @Test
     public void loopSymlinkRootTest() {
-        DuFile dir = dir("dir1", file("file1"), file("file2"));
-        DuFile rootTarget = symlink("symlinkTarget", dir);
-        DuFile symlinkRoot = symlink("symlink", rootTarget);
+        DuFileWithChildren dir = dir("dir1", file("file1"), file("file2"));
+        DuFileWithChildren rootTarget = symlink("symlinkTarget", dir);
+        DuFileWithChildren symlinkRoot = symlink("symlink", rootTarget);
         dir.getChildren().add(symlinkRoot);
+        dir.setActualCountOfChildren(3);
 
         {
             // followSymlinks = true
