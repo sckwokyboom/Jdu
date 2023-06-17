@@ -36,14 +36,10 @@ public class TreeWalker {
         this.options = options;
         fileSizeCacheCalculator = new FileSizeCacheCalculator(options.depth());
         visited = new ArrayList<>();
-        switch (options.comparatorType()) {
-            case SIZE_COMPARATOR -> comparator = new DuFileSizeComparator().reversed();
-            case LEXICOGRAPHICAL_COMPARATOR -> comparator = new DuFileLexicographicalComparator();
-            default -> {
-                comparator = null;
-                assert false;
-            }
-        }
+        comparator = switch (options.comparatorType()) {
+            case SIZE_COMPARATOR -> new DuFileSizeComparator().reversed();
+            case LEXICOGRAPHICAL_COMPARATOR -> new DuFileLexicographicalComparator();
+        };
     }
 
     public void walk(@NotNull Path root) throws JduRuntimeException {
@@ -59,6 +55,8 @@ public class TreeWalker {
         fileSizeCacheCalculator.setStartDepth(curDepth);
         setSizeToFile(curFile);
         fileSizeCacheCalculator.removeCacheEntry(curFile.getAbsolutePath());
+        // CR: MAX_VALUE?
+        // CR: handle in printer
         if (curDepth > options.depth() && curDepth < MAX_VALUE) {
             visitor.visitFile(curFile, curDepth);
             return;
@@ -70,19 +68,20 @@ public class TreeWalker {
         }
     }
 
-    private void walkSymlink(@NotNull DuFile curFile, int curDepth) {
-        visitor.visitFile(curFile, curDepth);
+    private void walkSymlink(@NotNull DuFile symlink, int curDepth) {
+        visitor.visitFile(symlink, curDepth);
         try {
             if (options.followSymlinks()) {
-                if (visited.contains(curFile.getAbsolutePath().normalize())) {
-                    curFile.setType(DuFileType.LOOP_SYMLINK);
-                    visitor.visitFile(curFile, curDepth);
+                Path absoluteSyminkPath = symlink.getAbsolutePath();
+                if (visited.contains(absoluteSyminkPath.normalize())) {
+                    symlink.setType(DuFileType.LOOP_SYMLINK);
+                    visitor.visitFile(symlink, curDepth);
                     return;
                 }
-                visited.add(curFile.getAbsolutePath().toAbsolutePath().normalize());
-                Path targetOfSymlinkPath = Files.readSymbolicLink(curFile.getAbsolutePath());
+                visited.add(absoluteSyminkPath.normalize());
+                Path targetOfSymlinkPath = Files.readSymbolicLink(absoluteSyminkPath);
                 DuFile targetOfSymLink = new DuFile(targetOfSymlinkPath, recognizeFileType(targetOfSymlinkPath));
-                curFile.getChildren().add(targetOfSymLink);
+                symlink.getChildren().add(targetOfSymLink);
                 walk(targetOfSymLink, curDepth + 1);
                 visited.clear();
             }
@@ -104,21 +103,15 @@ public class TreeWalker {
             int countOfFiles = min(children.size(), options.limit());
             curFile.getChildren().addAll(children.subList(0, countOfFiles));
             visitor.visitFile(curFile, curDepth);
-            children
-                    .stream()
-                    .skip(options.limit())
-                    .forEach(child -> fileSizeCacheCalculator.removeCacheEntry(child.getAbsolutePath()));
-            children
-                    .stream()
-                    .limit(countOfFiles)
-                    .forEach(child -> {
-                        try {
-                            walk(child, curDepth + 1);
-                        } catch (IOException e) {
-                            logger.error("Unable to get access to the file: {0}", e);
-                        }
-                    });
-
+            int nChildren = options.limit();
+            // clear the rest of the children
+            for (int i = nChildren; i < children.size(); i++) {
+                fileSizeCacheCalculator.removeCacheEntry(children.get(i).getAbsolutePath());
+            }
+            // visit first n
+            for (int i = 0; i < nChildren; i++) {
+                walk(children.get(i), curDepth + 1);
+            }
         } catch (IOException e) {
             logger.error("Unable to get access to the file: {0}", e);
         }

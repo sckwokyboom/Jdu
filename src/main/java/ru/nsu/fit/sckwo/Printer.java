@@ -20,6 +20,7 @@ public class Printer implements FileVisitor {
     private final int depthLimit;
     private final boolean followSymlinks;
 
+    // CR: just pass two options from jdu options
     public Printer(@NotNull JduOptions jduOptions, @NotNull PrintStream printStream) {
         this.printStream = printStream;
         countsOfChildren = new ArrayList<>(jduOptions.depth());

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+// CR: @Slf4j
 public enum DuFileType {
     REGULAR_FILE {
         public String getName() {
@@ -71,9 +72,11 @@ public enum DuFileType {
             if (Files.exists(Files.readSymbolicLink(absolutePath))) {
                 return DuFileType.SYMLINK;
             } else {
+                // CR: can we reach this branch?
                 return DuFileType.DANGLING_SYMLINK;
             }
         } catch (IOException e) {
+            // CR: log
             return DuFileType.BROKEN_SYMLINK;
         }
     }

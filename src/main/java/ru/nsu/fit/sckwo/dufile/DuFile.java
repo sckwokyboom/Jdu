@@ -11,8 +11,8 @@ public class DuFile {
     private final Path absolutePath;
     private long size = -1;
     private DuFileType fileType;
+    // CR: nChildren / childrenCount
     private final List<DuFile> children;
-
 
     public DuFile(@NotNull Path path, @NotNull DuFileType fileType) {
         this.absolutePath = path.toAbsolutePath();
