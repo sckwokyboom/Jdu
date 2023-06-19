@@ -1,8 +1,6 @@
 package ru.nsu.fit.sckwo;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import ru.nsu.fit.sckwo.comparators.DuFileLexicographicalComparator;
 import ru.nsu.fit.sckwo.comparators.DuFileSizeComparator;
@@ -24,13 +22,11 @@ import static ru.nsu.fit.sckwo.dufile.DuFileType.isFileSizeCountable;
 import static ru.nsu.fit.sckwo.dufile.DuFileType.recognizeFileType;
 
 @Slf4j
-
 public class TreeWalker {
     private final JduOptions options;
     private final Comparator<DuFile> comparator;
     private final FileSizeCacheCalculator fileSizeCacheCalculator;
     private final FileVisitor visitor;
-    private static final Logger logger = LogManager.getLogger(TreeWalker.class);
     private final List<Path> visited;
 
     public TreeWalker(@NotNull JduOptions options, @NotNull FileVisitor visitor) {
@@ -123,7 +119,7 @@ public class TreeWalker {
                 visited.clear();
             }
         } catch (IOException e) {
-            logger.error("Unable to get access to the file: {0}", e);
+            log.error("Unable to get access to the file: {0}", e);
         }
     }
 
@@ -147,7 +143,7 @@ public class TreeWalker {
                 walk(children.get(i), curDepth + 1);
             }
         } catch (IOException e) {
-            logger.error("Unable to get access to the file: {0}", e);
+            log.error("Unable to get access to the file: {0}", e);
         }
     }
 

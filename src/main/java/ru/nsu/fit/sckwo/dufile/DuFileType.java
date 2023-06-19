@@ -2,8 +2,6 @@ package ru.nsu.fit.sckwo.dufile;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -45,8 +43,6 @@ public enum DuFileType {
 
     public abstract String getName();
 
-    private static final Logger logger = LoggerFactory.getLogger(DuFileType.class);
-
     public static boolean isFileSizeCountable(@NotNull DuFileType fileType) {
         return fileType != DuFileType.UNKNOWN_FORMAT_FILE
                 && fileType != DuFileType.BROKEN_SYMLINK
@@ -75,7 +71,7 @@ public enum DuFileType {
                 return DuFileType.DANGLING_SYMLINK;
             }
         } catch (IOException e) {
-            logger.error("Unable to access target of symlink." + e.getMessage());
+            log.error("Unable to access target of symlink." + e.getMessage());
             return DuFileType.BROKEN_SYMLINK;
         }
     }
