@@ -84,7 +84,7 @@ public class Printer implements FileVisitor {
     private void printFileInfo(@NotNull DuFile curFile) {
         printStream.println(
                 currentCompoundIndent
-                        + curFile.getAbsolutePath().getFileName()
+                        + curFile.getAbsolutePath().getFileName().toString()
                         + " "
                         + getHumanReadableSizeOf(curFile)
                         + "["

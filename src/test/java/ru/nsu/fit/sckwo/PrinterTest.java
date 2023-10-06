@@ -11,6 +11,7 @@ import ru.nsu.fit.sckwo.exception.JduRuntimeException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
@@ -21,13 +22,17 @@ import static ru.nsu.fit.sckwo.core.DuFileHelper.*;
 public class PrinterTest {
     private void testWithResult(@NotNull JduOptions jduOptions, @NotNull DuFileWithChildren duFile, @NotNull String answer) {
         ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
-        try (PrintStream pos = new PrintStream(byteOutput)) {
+        try (PrintStream pos = new PrintStream(byteOutput, true, StandardCharsets.UTF_16)) {
             Printer printer = new Printer(pos, jduOptions.depth(), jduOptions.followSymlinks());
             printHierarchy(printer, duFile, jduOptions, 0, new HashSet<>());
         } catch (JduException e) {
             throw new JduRuntimeException(e);
         }
-        Assertions.assertEquals(answer, byteOutput.toString(), "The results don't match:");
+        Assertions.assertEquals(answer,
+                byteOutput
+                        .toString(StandardCharsets.UTF_16)
+                        .replace("\r\n", "\n"),
+                "The results don't match:");
     }
 
     private static void printHierarchy(@NotNull Printer printer, @NotNull DuFileWithChildren currentFile, @NotNull JduOptions jduOptions, int depth, @NotNull Set<Path> visited) {
@@ -48,7 +53,6 @@ public class PrinterTest {
         for (DuFileWithChildren child : children) {
             printHierarchy(printer, child, jduOptions, depth + 1, visited);
         }
-//        children.forEach(child -> printHierarchy(printer, child, jduOptions, depth + 1, visited));
     }
 
     @Test
@@ -62,8 +66,8 @@ public class PrinterTest {
                 ComparatorType.SIZE_COMPARATOR,
                 fileRoot.getAbsolutePath());
         testWithResult(jduOptions, fileRoot, """
-                root [0 B] [regular]\r
-                                """);
+                root [0 B] [regular]
+                """);
     }
 
     @Test
@@ -86,17 +90,17 @@ public class PrinterTest {
                     ComparatorType.LEXICOGRAPHICAL_COMPARATOR,
                     root.getAbsolutePath());
             testWithResult(jduOptions, root, """
-                    dir0 [0 B] [directory]\r
-                    ├─ dir1 [0 B] [directory]\r
-                    ├─ file [0 B] [regular]\r
-                    ├─ symlinkToFile [0 B] [symlink]\r
-                    │   ╰▷ fileTargetOfSymlink [0 B] [regular]\r
-                    ├─ symlinkToDir [0 B] [symlink]\r
-                    │   ╰▷ dirTargetOfSymlink [0 B] [regular]\r
-                    ╰─ dir2 [0 B] [directory]\r
-                        ├─ test1 [0 B] [regular]\r
-                        ╰─ test2 [0 B] [regular]\r
-                                    """);
+                    dir0 [0 B] [directory]
+                    ├─ dir1 [0 B] [directory]
+                    ├─ file [0 B] [regular]
+                    ├─ symlinkToFile [0 B] [symlink]
+                    │   ╰▷ fileTargetOfSymlink [0 B] [regular]
+                    ├─ symlinkToDir [0 B] [symlink]
+                    │   ╰▷ dirTargetOfSymlink [0 B] [regular]
+                    ╰─ dir2 [0 B] [directory]
+                        ├─ test1 [0 B] [regular]
+                        ╰─ test2 [0 B] [regular]
+                    """);
         }
 
         {
@@ -108,15 +112,15 @@ public class PrinterTest {
                     ComparatorType.SIZE_COMPARATOR,
                     root.getAbsolutePath());
             testWithResult(jduOptions, root, """
-                    dir0 [0 B] [directory]\r
-                    ├─ dir1 [0 B] [directory]\r
-                    ├─ file [0 B] [regular]\r
-                    ├─ symlinkToFile [0 B] [symlink]\r
-                    ├─ symlinkToDir [0 B] [symlink]\r
-                    ╰─ dir2 [0 B] [directory]\r
-                        ├─ test1 [0 B] [regular]\r
-                        ╰─ test2 [0 B] [regular]\r
-                                    """);
+                    dir0 [0 B] [directory]
+                    ├─ dir1 [0 B] [directory]
+                    ├─ file [0 B] [regular]
+                    ├─ symlinkToFile [0 B] [symlink]
+                    ├─ symlinkToDir [0 B] [symlink]
+                    ╰─ dir2 [0 B] [directory]
+                        ├─ test1 [0 B] [regular]
+                        ╰─ test2 [0 B] [regular]
+                    """);
         }
     }
 
@@ -131,11 +135,11 @@ public class PrinterTest {
                 ComparatorType.SIZE_COMPARATOR,
                 symlinkRoot.getAbsolutePath());
         testWithResult(jduOptions, symlinkRoot, """
-                symlink [0 B] [symlink]\r
-                ╰▷ dir1 [0 B] [directory]\r
-                    ├─ file1 [0 B] [regular]\r
-                    ╰─ file2 [0 B] [regular]\r
-                                """);
+                symlink [0 B] [symlink]
+                ╰▷ dir1 [0 B] [directory]
+                    ├─ file1 [0 B] [regular]
+                    ╰─ file2 [0 B] [regular]
+                """);
     }
 
     @Test
@@ -155,13 +159,13 @@ public class PrinterTest {
                     ComparatorType.SIZE_COMPARATOR,
                     symlinkRoot.getAbsolutePath());
             testWithResult(jduOptions, symlinkRoot, """
-                    symlink [0 B] [symlink]\r
-                    ╰▷ symlinkTarget [0 B] [symlink]\r
-                        ╰▷ dir1 [0 B] [directory]\r
-                            ├─ file1 [0 B] [regular]\r
-                            ├─ file2 [0 B] [regular]\r
-                            ╰─ symlink [0 B] [symlink]\r
-                                    """);
+                    symlink [0 B] [symlink]
+                    ╰▷ symlinkTarget [0 B] [symlink]
+                        ╰▷ dir1 [0 B] [directory]
+                            ├─ file1 [0 B] [regular]
+                            ├─ file2 [0 B] [regular]
+                            ╰─ symlink [0 B] [symlink]
+                    """);
         }
 
         {
@@ -173,8 +177,8 @@ public class PrinterTest {
                     ComparatorType.SIZE_COMPARATOR,
                     symlinkRoot.getAbsolutePath());
             testWithResult(jduOptions, symlinkRoot, """
-                    symlink [0 B] [symlink]\r
-                                    """);
+                    symlink [0 B] [symlink]
+                    """);
         }
     }
 }

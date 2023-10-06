@@ -1,6 +1,8 @@
 package ru.nsu.fit.sckwo.utils;
 
 import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
 
 public enum FileSizeUnit {
     BYTE {
@@ -38,14 +40,18 @@ public enum FileSizeUnit {
 
     public static String bytesToHumanReadableFormat(long fileSizeInBytes) {
         assert fileSizeInBytes >= 0;
+        final String nbsp = "\u00A0";
         if (fileSizeInBytes < 1024) {
-            return fileSizeInBytes + " " + FileSizeUnit.BYTE.getName();
+            return fileSizeInBytes + nbsp + FileSizeUnit.BYTE.getName();
         }
         final FileSizeUnit[] UNITS = FileSizeUnit.values();
         int unitGroup = Math.min(UNITS.length - 1, (int) (Math.log(fileSizeInBytes) / Math.log(1024)));
         double convertedSize = fileSizeInBytes / Math.pow(1024, unitGroup);
         FileSizeUnit currentUnit = UNITS[unitGroup];
-        DecimalFormat decimalFormat = new DecimalFormat("#,##0.##");
-        return decimalFormat.format(convertedSize).replace(",", ".") + " " + currentUnit.getName();
+        DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.getDefault());
+        symbols.setGroupingSeparator('\u00A0');
+        symbols.setDecimalSeparator('.');
+        DecimalFormat decimalFormat = new DecimalFormat("#,##0.##", symbols);
+        return decimalFormat.format(convertedSize) + nbsp + currentUnit.getName();
     }
 }

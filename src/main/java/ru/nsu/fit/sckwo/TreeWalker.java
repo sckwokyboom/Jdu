@@ -96,7 +96,7 @@ public class TreeWalker {
         switch (curFile.getType()) {
             case SYMLINK -> walkSymlink(curFile, curDepth);
             case DIRECTORY -> walkDirectory(curFile, curDepth);
-            case default -> {
+            default -> {
                 visitor.visitFile(curFile, curDepth);
                 fileSizeCacheCalculator.removeCacheEntry(curFile.getAbsolutePath());
             }
