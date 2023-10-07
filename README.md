@@ -6,13 +6,18 @@ Jdu is a file tree utility that shows you how much space the files in a given ro
 
 _Requires maven installed!_
 
-To build the program into a JAR, enter the mvn clean install command in your terminal.
+To build the program into a JAR, enter this command in your terminal:
+
+```
+mvn clean install
+```
+
 
 The JAR with all the necessary dependencies and ready to run will be located in the `/target` folder.
 
 ## Starting the program:
 
-To run the program, run the attached bash script:
+To run the program, enter this command:
 
 ```
 java -jar jdu-1.0-jar-with-dependencies.jar [options] your_target_dir
@@ -24,11 +29,11 @@ java -jar jdu-1.0-jar-with-dependencies.jar [options] your_target_dir
 
 ## Options:
 
-> -depth n — recursion depth (default limit is 1024);
+> `-depth n` — recursion depth (default limit is 1024);
 
-> -L — follow symlinks;
+> `-L` — follow symlinks;
 
-> -limit n — show n heaviest files and/or directories at each level of the tree. (default limit 1024).
+> `-limit n` — show n heaviest files and/or directories at each level of the tree. (default limit 1024).
 
 ## Result of work:
 
